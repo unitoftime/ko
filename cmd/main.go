@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"os"
 )
 
 // Ideas:
@@ -33,6 +34,8 @@ func main() {
 		fmt.Println("- Result")
 		fmt.Println("--------------------------------------------------------------------------------")
 		fmt.Println(buf.String())
+
+		os.WriteFile("../build/src/main.zig", buf.Bytes(), 0777)
 	}
 }
 

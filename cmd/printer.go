@@ -5,26 +5,58 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"path"
+	"strings"
 )
 
+// Zig
 const (
 	LPAREN = "("
 	RPAREN = ")"
 	LBRACE = "{"
 	RBRACE = "}"
-	FUNC = "func"
+	FUNC = "fn"
 	LINE = "\n"
 	SPACE = " "
 	TUPLESEP = ", "
 	ELLIPSIS = "..."
+	SEMICOLON = ";"
+	COLON = ":"
+
+	// TYPE = "const"
+	CONST = "const"
+	VAR = "var"
+	ASSIGN = "="
+	STRUCT = "struct"
+	INTERFACE = "interface"
+	IMPORT = "@import"
 )
+
+// Go
+// const (
+// 	LPAREN = "("
+// 	RPAREN = ")"
+// 	LBRACE = "{"
+// 	RBRACE = "}"
+// 	FUNC = "func"
+// 	LINE = "\n"
+// 	SPACE = " "
+// 	TUPLESEP = ", "
+// 	ELLIPSIS = "..."
+// 	SEMICOLON = ";"
+	// CONST = "const"
+	// VAR = "var"
+	// ASSIGN = "="
+	// STRUCT = "struct"
+	// INTERFACE = "interface"
+// )
 
 type printer struct {
 	buf bytes.Buffer
 }
 
 func (p *printer) file(src *ast.File) {
-	p.print("package ", src.Name.Name, LINE)
+	// p.print("package ", src.Name.Name, LINE)
 	// fmt.Fprintf(&p.buf, "package %s", src.Name.Name) // Expr technically
 
 	p.declList(src.Decls)
@@ -53,56 +85,80 @@ func (p *printer) decl(decl ast.Decl) {
 }
 
 func (p *printer) genDecl(d *ast.GenDecl) {
-	// p.setComment(d.Doc)
-	// p.setPos(d.Pos())
-	p.print(d.Tok, " ")
-
-	if d.Lparen.IsValid() || len(d.Specs) != 1 {
-		// group of parenthesized declarations
-		// p.setPos(d.Lparen)
-		p.print(LPAREN)
-		if n := len(d.Specs); n > 0 {
-			p.print(LINE)
-			// p.print(indent, formfeed)
-			if n > 1 && (d.Tok == token.CONST || d.Tok == token.VAR) {
-				// // two or more grouped const/var declarations:
-				// // determine if the type column must be kept
-				// keepType := keepTypeColumn(d.Specs)
-				// var line int
-				for i, s := range d.Specs {
-					if i > 0 {
-						// p.linebreak(p.lineFor(s.Pos()), 1, ignore, p.linesFrom(line) > 0)
-						p.print(LINE)
-					}
-					// p.recordLine(&line)
-					p.valueSpec(s.(*ast.ValueSpec))
-				}
-			} else {
-				// var line int
-				for i, s := range d.Specs {
-					if i > 0 {
-					// 	p.linebreak(p.lineFor(s.Pos()), 1, ignore, p.linesFrom(line) > 0)
-						p.print(LINE)
-					}
-					// p.recordLine(&line)
-					p.spec(s)
-				}
-			}
-			// p.print(unindent, formfeed)
-		}
-		// p.setPos(d.Rparen)
-		p.print(LINE, RPAREN, LINE)
-
-	} else if len(d.Specs) > 0 {
-		// single declaration
-		p.spec(d.Specs[0])
+	switch d.Tok {
+	case token.IMPORT:
+	case token.TYPE:
+	case token.VAR:
+		p.print(VAR, SPACE)
+	case token.CONST:
+		p.print(CONST, SPACE)
+	default:
+		panic(fmt.Sprintf("unhandled genDecl: %s", d.Tok.String()))
 	}
+
+		for i := range d.Specs {
+			p.spec(d.Specs[i])
+		}
+		return
+
+	// // p.setComment(d.Doc)
+	// // p.setPos(d.Pos())
+	// p.print(d.Tok, " ")
+
+	// if d.Lparen.IsValid() || len(d.Specs) != 1 {
+	// 	// group of parenthesized declarations
+	// 	// p.setPos(d.Lparen)
+	// 	p.print(LPAREN)
+	// 	if n := len(d.Specs); n > 0 {
+	// 		p.print(LINE)
+	// 		// p.print(indent, formfeed)
+	// 		if n > 1 && (d.Tok == token.CONST || d.Tok == token.VAR) {
+	// 			// // two or more grouped const/var declarations:
+	// 			// // determine if the type column must be kept
+	// 			// keepType := keepTypeColumn(d.Specs)
+	// 			// var line int
+	// 			for i, s := range d.Specs {
+	// 				if i > 0 {
+	// 					// p.linebreak(p.lineFor(s.Pos()), 1, ignore, p.linesFrom(line) > 0)
+	// 					p.print(LINE)
+	// 				}
+	// 				// p.recordLine(&line)
+	// 				p.valueSpec(s.(*ast.ValueSpec))
+	// 			}
+	// 		} else {
+	// 			// var line int
+	// 			for i, s := range d.Specs {
+	// 				if i > 0 {
+	// 				// 	p.linebreak(p.lineFor(s.Pos()), 1, ignore, p.linesFrom(line) > 0)
+	// 					p.print(LINE)
+	// 				}
+	// 				// p.recordLine(&line)
+	// 				p.spec(s)
+	// 			}
+	// 		}
+	// 		// p.print(unindent, formfeed)
+	// 	}
+	// 	// p.setPos(d.Rparen)
+	// 	p.print(LINE, RPAREN, LINE)
+
+	// } else if len(d.Specs) > 0 {
+	// 	// single declaration
+	// 	p.spec(d.Specs[0])
+	// }
 }
 
 func (p *printer) funcDecl(d *ast.FuncDecl) {
 	// p.setComment(d.Doc)
 	// p.setPos(d.Pos())
-	p.print(LINE, FUNC, SPACE)
+	p.print(LINE)
+
+	if d.Name.Name == "main" {
+		// If public
+		// TODO: also handle capital named functions
+		p.print("pub", SPACE, FUNC, SPACE)
+	} else {
+		p.print(FUNC, SPACE)
+	}
 	// We have to save startCol only after emitting FUNC; otherwise it can be on a
 	// different line (all whitespace preceding the FUNC is emitted only when the
 	// FUNC is emitted).
@@ -111,22 +167,56 @@ func (p *printer) funcDecl(d *ast.FuncDecl) {
 		p.parameters(d.Recv)
 		p.print(SPACE)
 	}
+
 	p.expr(d.Name)
+
 	p.signature(d.Type)
 	p.funcBody(d.Body)
+}
+
+func (p *printer) returnParams(fields *ast.FieldList) {
+	if fields == nil { return }
+	// p.print(LPAREN)
+	for _, f := range fields.List {
+		// for i := range f.Names {
+		// 	p.expr(f.Names[i])
+		// 	p.print(COLON, SPACE)
+		// 	p.expr(f.Type)
+		// 	if i < len(f.Names)-1 {
+		// 		p.print(TUPLESEP)
+		// 	}
+		// }
+		p.expr(f.Type)
+	}
+	// p.print(RPAREN)
 }
 
 func (p *printer) parameters(fields *ast.FieldList) {
 	if fields == nil { return }
 	p.print(LPAREN)
 	for _, f := range fields.List {
-		p.identList(f.Names)
-		p.print(SPACE)
-		p.expr(f.Type)
-		p.print(SPACE)
-		// TODO: Tags?
+		for i := range f.Names {
+			p.expr(f.Names[i])
+			p.print(COLON, SPACE)
+			p.expr(f.Type)
+			if i < len(f.Names)-1 {
+				p.print(TUPLESEP)
+			}
+		}
 	}
 	p.print(RPAREN)
+
+
+	// if fields == nil { return }
+	// p.print(LPAREN)
+	// for _, f := range fields.List {
+	// 	p.identList(f.Names)
+	// 	p.print(SPACE)
+	// 	p.expr(f.Type)
+	// 	p.print(SPACE)
+	// 	// TODO: Tags?
+	// }
+	// p.print(RPAREN)
 }
 
 func (p *printer) signature(sig *ast.FuncType) {
@@ -134,7 +224,12 @@ func (p *printer) signature(sig *ast.FuncType) {
 	p.print(SPACE)
 	p.parameters(sig.Params)
 	p.print(SPACE)
-	p.parameters(sig.Results)
+	if sig.Results != nil {
+		p.returnParams(sig.Results)
+		// TODO: If the error type gets returned then !err or whatever
+	} else {
+		p.print("void")
+	}
 	p.print(SPACE)
 }
 
@@ -147,6 +242,7 @@ func (p *printer) funcBody(block *ast.BlockStmt) {
 	for _, s := range block.List {
 		p.print(LINE)
 		p.stmt(s)
+		p.print(SEMICOLON)
 	}
 	p.print(LINE)
 }
@@ -157,18 +253,34 @@ func (p *printer) fieldList(fields *ast.FieldList) {
 	p.print(LINE)
 	for _, f := range fields.List {
 		p.identList(f.Names)
-		p.print(SPACE)
+		p.print(COLON, SPACE)
 		p.expr(f.Type)
 		p.print(LINE)
 		// TODO: Tags?
 	}
-	p.print(RBRACE)
+	p.print(RBRACE, SEMICOLON)
 }
 
 func (p *printer) stmt(stmt ast.Stmt) {
 	switch s := stmt.(type) {
 	case *ast.ExprStmt:
 		p.expr(s.X)
+	case *ast.DeclStmt:
+		p.genDecl(s.Decl.(*ast.GenDecl))
+
+	case *ast.AssignStmt:
+		if len(s.Lhs) != 1 || len(s.Rhs) != 1 {
+			// TODO: Could: https://ziggit.dev/t/return-multiple-values-from-a-function/460/2
+			panic("currently only supporting single assignemtnts")
+		}
+		tok := VAR
+		if s.Tok == token.CONST {
+			tok = CONST
+		}
+		p.print(tok, SPACE)
+		p.expr(s.Lhs[0])
+		p.print(SPACE, ASSIGN, SPACE)
+		p.expr(s.Rhs[0])
 	case *ast.ReturnStmt:
 		p.print("return ")
 		p.exprList(s.Results)
@@ -184,7 +296,7 @@ func (p *printer) valueSpec(s *ast.ValueSpec) {
 		p.expr(s.Type)
 	}
 	if s.Values != nil {
-		p.print(SPACE, token.ASSIGN, SPACE)
+		p.print(SPACE, ASSIGN, SPACE)
 		p.exprList(s.Values)
 	}
 
@@ -238,11 +350,35 @@ func (p *printer) print(args ...any) {
 		case *ast.BasicLit:
 			fmt.Fprint(&p.buf, v.Value)
 		case token.Token:
-			fmt.Fprint(&p.buf, v.String())
+			p.token(v)
 		default:
 			panic(fmt.Sprintf("print: Unknown Type: %T", a))
 		}
 	}
+}
+
+func (p *printer) token(t token.Token) {
+	switch t {
+	case token.ADD: fallthrough
+	case token.SUB: fallthrough
+	case token.QUO: fallthrough
+	case token.REM: fallthrough
+	case token.AND: fallthrough
+	case token.OR: fallthrough
+	case token.XOR: fallthrough
+	case token.SHL: fallthrough
+	case token.SHR: fallthrough
+	case token.AND_NOT: fallthrough
+	case token.MUL:
+		p.print(t.String())
+	// case token.TYPE:
+	// 	p.print("TYPE")
+	// case token.IMPORT:
+	// 	p.print(IMPORT)
+	default:
+		panic(fmt.Sprintf("token: Unknown Token: %s", t))
+	}
+	// fmt.Fprint(&p.buf, v.String())
 }
 
 //--------------------------------------------------------------------------------
@@ -253,9 +389,10 @@ func (p *printer) exprList(list []ast.Expr) {
 	}
 
 	for i, xx := range list {
-		switch xx.(type) {
-		// case *ast.KeyValueExpr:
-		// 	fmt.Println("ast.KeyValueExpr", x)
+		switch x := xx.(type) {
+		case *ast.KeyValueExpr:
+			// fmt.Println("ast.KeyValueExpr", x)
+			p.print(".", x.Key, " = ", x.Value)
 		default:
 			p.expr(xx)
 			if i < len(list)-1 {
@@ -466,37 +603,42 @@ func (p *printer) expr(expr ast.Expr) {
 			p.exprList(x.Args)
 			p.print(ELLIPSIS)
 			if x.Rparen.IsValid() { // && p.lineFor(x.Ellipsis) < p.lineFor(x.Rparen) {
-				p.print(",")
+				p.print(TUPLESEP)
 			}
 		} else {
 			p.exprList(x.Args)
 		}
-		p.print(token.RPAREN)
+		p.print(RPAREN)
 
-	// case *ast.CompositeLit:
-	// 	// composite literal elements that are composite literals themselves may have the type omitted
-	// 	if x.Type != nil {
-	// 		p.expr1(x.Type, token.HighestPrec, depth)
-	// 	}
-	// 	p.level++
-	// 	p.setPos(x.Lbrace)
-	// 	p.print(token.LBRACE)
-	// 	p.exprList(x.Lbrace, x.Elts, 1, commaTerm, x.Rbrace, x.Incomplete)
-	// 	// do not insert extra line break following a /*-style comment
-	// 	// before the closing '}' as it might break the code if there
-	// 	// is no trailing ','
-	// 	mode := noExtraLinebreak
-	// 	// do not insert extra blank following a /*-style comment
-	// 	// before the closing '}' unless the literal is empty
-	// 	if len(x.Elts) > 0 {
-	// 		mode |= noExtraBlank
-	// 	}
-	// 	// need the initial indent to print lone comments with
-	// 	// the proper level of indentation
-	// 	p.print(indent, unindent, mode)
-	// 	p.setPos(x.Rbrace)
-	// 	p.print(token.RBRACE, mode)
-	// 	p.level--
+	case *ast.CompositeLit:
+		// composite literal elements that are composite literals themselves may have the type omitted
+		if x.Type != nil {
+			_, ok := x.Type.(*ast.StructType)
+			if ok {
+				p.print(".")
+			} else {
+				p.expr(x.Type)
+			}
+		}
+		fmt.Printf("AAAA: %+v\n", x.Elts)
+		p.print(LBRACE)
+		p.exprList(x.Elts)
+		// // do not insert extra line break following a /*-style comment
+		// // before the closing '}' as it might break the code if there
+		// // is no trailing ','
+		// mode := noExtraLinebreak
+
+		// // do not insert extra blank following a /*-style comment
+		// // before the closing '}' unless the literal is empty
+		// if len(x.Elts) > 0 {
+		// 	mode |= noExtraBlank
+		// }
+		// need the initial indent to print lone comments with
+		// the proper level of indentation
+		// p.print(indent, unindent, mode)
+		// p.setPos(x.Rbrace)
+		p.print(RBRACE)
+		// p.level--
 
 	// case *ast.Ellipsis:
 	// 	p.print(token.ELLIPSIS)
@@ -513,15 +655,15 @@ func (p *printer) expr(expr ast.Expr) {
 	// 	p.expr(x.Elt)
 
 	case *ast.StructType:
-		p.print(token.STRUCT)
+		p.print(STRUCT)
 		p.fieldList(x.Fields)
 
 	case *ast.FuncType:
-		p.print(token.FUNC)
+		p.print(FUNC)
 		p.signature(x)
 
 	case *ast.InterfaceType:
-		p.print(token.INTERFACE)
+		p.print(INTERFACE)
 		p.fieldList(x.Methods)
 
 	// case *ast.MapType:
@@ -552,14 +694,54 @@ func (p *printer) expr(expr ast.Expr) {
 
 //--------------------------------------------------------------------------------
 
+// 1. use shim layer for fmt
+// 2. pub fn main()
+
+var stdShims = map[string]string{
+	"fmt": "\"lib/fmt.zig\"",
+}
+
+func getPackagePath(p string) string {
+	str := strings.Trim(p, "\"")
+	pkg, ok := stdShims[str]
+	if ok {
+		return pkg
+	}
+	return p
+}
+
+func nameFromPath(p string) string {
+	str := strings.Trim(p, "\"")
+
+	return path.Base(str)
+}
+
 func (p *printer) spec(spec ast.Spec) {
 	switch s := spec.(type) {
 	case *ast.ImportSpec:
+		pkgPath := getPackagePath(s.Path.Value)
 		if s.Name != nil {
+			p.print(CONST, SPACE)
 			p.expr(s.Name)
+			p.print(ASSIGN, SPACE, IMPORT, LPAREN)
+			// p.expr(s.Path) // TODO: Sanitize?
+			p.print(pkgPath)
+			p.print(RPAREN, SEMICOLON)
+		} else {
+			p.print(CONST, SPACE)
+			name := nameFromPath(s.Path.Value)
+			p.print(name, SPACE)
+			p.print(ASSIGN, SPACE, IMPORT, LPAREN)
+			// p.expr(s.Path) // TODO: Sanitize?
+			p.print(pkgPath)
+			p.print(RPAREN, SEMICOLON)
 		}
 
-		p.expr(s.Path) // TODO: Sanitize?
+		// if s.Name != nil {
+		// 	p.expr(s.Name)
+		// }
+
+		// p.expr(s.Path) // TODO: Sanitize?
 
 		// p.setComment(s.Doc)
 		// if s.Name != nil {
@@ -588,15 +770,18 @@ func (p *printer) spec(spec ast.Spec) {
 		// // p.setComment(s.Comment)
 
 	case *ast.TypeSpec:
-		p.expr(s.Name)
-		p.print(SPACE)
-		if s.TypeParams != nil {
-			p.parameters(s.TypeParams)
-		}
-		if s.Assign.IsValid() {
-			p.print(token.ASSIGN, SPACE)
-		}
-		p.expr(s.Type)
+		p.typeSpec(s)
+		// fmt.Println("TYPESPEC:", s.Name.Name)
+		// fmt.Printf("%T: %+v\n", s.Type, s.Type)
+		// p.expr(s.Name)
+		// p.print(SPACE)
+		// if s.TypeParams != nil {
+		// 	p.parameters(s.TypeParams)
+		// }
+		// if s.Assign.IsValid() {
+		// 	p.print(ASSIGN, SPACE)
+		// }
+		// p.expr(s.Type)
 
 		// p.setComment(s.Doc)
 		// p.expr(s.Name)
@@ -618,4 +803,21 @@ func (p *printer) spec(spec ast.Spec) {
 		// panic("unreachable")
 		panic(fmt.Sprintf("spec: Missing Type: %T", spec))
 	}
+}
+
+func (p *printer) typeSpec(s *ast.TypeSpec) {
+	// fmt.Println("TYPESPEC:", s.Name.Name)
+	// fmt.Printf("%T: %+v\n", s.Type, s.Type)
+
+	// const mystruct = struct
+	p.print(CONST, SPACE)
+	p.expr(s.Name)
+	p.print(SPACE, ASSIGN, SPACE)
+	if s.TypeParams != nil {
+		p.parameters(s.TypeParams)
+	}
+	if s.Assign.IsValid() {
+		p.print(ASSIGN, SPACE)
+	}
+	p.expr(s.Type)
 }
