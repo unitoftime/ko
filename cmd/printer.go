@@ -96,10 +96,11 @@ func (p *printer) genDecl(d *ast.GenDecl) {
 		panic(fmt.Sprintf("unhandled genDecl: %s", d.Tok.String()))
 	}
 
-		for i := range d.Specs {
-			p.spec(d.Specs[i])
-		}
-		return
+	for i := range d.Specs {
+		p.spec(d.Specs[i])
+		p.print(LINE)
+	}
+
 
 	// // p.setComment(d.Doc)
 	// // p.setPos(d.Pos())
@@ -242,7 +243,6 @@ func (p *printer) funcBody(block *ast.BlockStmt) {
 	for _, s := range block.List {
 		p.print(LINE)
 		p.stmt(s)
-		p.print(SEMICOLON)
 	}
 	p.print(LINE)
 }
@@ -265,8 +265,10 @@ func (p *printer) stmt(stmt ast.Stmt) {
 	switch s := stmt.(type) {
 	case *ast.ExprStmt:
 		p.expr(s.X)
+		p.print(SEMICOLON)
 	case *ast.DeclStmt:
 		p.genDecl(s.Decl.(*ast.GenDecl))
+		p.print(SEMICOLON)
 
 	case *ast.AssignStmt:
 		if len(s.Lhs) != 1 || len(s.Rhs) != 1 {
@@ -281,9 +283,18 @@ func (p *printer) stmt(stmt ast.Stmt) {
 		p.expr(s.Lhs[0])
 		p.print(SPACE, ASSIGN, SPACE)
 		p.expr(s.Rhs[0])
+		p.print(SEMICOLON)
 	case *ast.ReturnStmt:
 		p.print("return ")
 		p.exprList(s.Results)
+		p.print(SEMICOLON)
+	case *ast.DeferStmt:
+		p.print("defer ")
+		p.expr(s.Call)
+		p.print(SEMICOLON)
+	case *ast.ForStmt:
+		p.forStmt(s)
+
 	default:
 		panic(fmt.Sprintf("stmt: unknown type: %T", stmt))
 	}
@@ -369,7 +380,8 @@ func (p *printer) token(t token.Token) {
 	case token.SHL: fallthrough
 	case token.SHR: fallthrough
 	case token.AND_NOT: fallthrough
-	case token.MUL:
+	case token.MUL: fallthrough
+	case token.NOT:
 		p.print(t.String())
 	// case token.TYPE:
 	// 	p.print("TYPE")
@@ -448,22 +460,24 @@ func (p *printer) expr(expr ast.Expr) {
 	// 		p.expr(x.X)
 	// 	}
 
-	// case *ast.UnaryExpr:
-	// 	const prec = token.UnaryPrec
-	// 	if prec < prec1 {
-	// 		// parenthesis needed
-	// 		p.print(token.LPAREN)
-	// 		p.expr(x)
-	// 		p.print(token.RPAREN)
-	// 	} else {
-	// 		// no parenthesis needed
-	// 		p.print(x.Op)
-	// 		if x.Op == token.RANGE {
-	// 			// TODO(gri) Remove this code if it cannot be reached.
-	// 			p.print(blank)
-	// 		}
-	// 		p.expr1(x.X, prec, depth)
-	// 	}
+	case *ast.UnaryExpr:
+		p.token(x.Op)
+		p.expr(x.X)
+		// const prec = token.UnaryPrec
+		// if prec < prec1 {
+		// 	// parenthesis needed
+		// 	p.print(token.LPAREN)
+		// 	p.expr(x)
+		// 	p.print(token.RPAREN)
+		// } else {
+		// 	// no parenthesis needed
+		// 	p.print(x.Op)
+		// 	if x.Op == token.RANGE {
+		// 		// TODO(gri) Remove this code if it cannot be reached.
+		// 		p.print(blank)
+		// 	}
+		// 	p.expr1(x.X, prec, depth)
+		// }
 
 	case *ast.BasicLit:
 		// if p.Config.Mode&normalizeNumbers != 0 {
@@ -698,7 +712,12 @@ func (p *printer) expr(expr ast.Expr) {
 // 2. pub fn main()
 
 var stdShims = map[string]string{
-	"fmt": "\"lib/fmt.zig\"",
+	"fmt": "@import(\"lib/fmt.zig\")",
+	"github.com/raysan5/raylib": `@cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+    @cInclude("rlgl.h");
+})`,
 }
 
 func getPackagePath(p string) string {
@@ -707,7 +726,7 @@ func getPackagePath(p string) string {
 	if ok {
 		return pkg
 	}
-	return p
+	return fmt.Sprintf("@import(%s)", p)
 }
 
 func nameFromPath(p string) string {
@@ -723,18 +742,18 @@ func (p *printer) spec(spec ast.Spec) {
 		if s.Name != nil {
 			p.print(CONST, SPACE)
 			p.expr(s.Name)
-			p.print(ASSIGN, SPACE, IMPORT, LPAREN)
+			p.print(ASSIGN, SPACE)
 			// p.expr(s.Path) // TODO: Sanitize?
 			p.print(pkgPath)
-			p.print(RPAREN, SEMICOLON)
+			p.print(SEMICOLON)
 		} else {
 			p.print(CONST, SPACE)
 			name := nameFromPath(s.Path.Value)
 			p.print(name, SPACE)
-			p.print(ASSIGN, SPACE, IMPORT, LPAREN)
+			p.print(ASSIGN, SPACE)
 			// p.expr(s.Path) // TODO: Sanitize?
 			p.print(pkgPath)
-			p.print(RPAREN, SEMICOLON)
+			p.print(SEMICOLON)
 		}
 
 		// if s.Name != nil {
@@ -820,4 +839,28 @@ func (p *printer) typeSpec(s *ast.TypeSpec) {
 		p.print(ASSIGN, SPACE)
 	}
 	p.expr(s.Type)
+}
+
+func (p *printer) forStmt(s *ast.ForStmt) {
+	isWhile := s.Init == nil && s.Post == nil
+
+	if isWhile {
+		p.print("while ", LPAREN)
+		if s.Cond != nil {
+			p.expr(s.Cond)
+		}
+		p.print(RPAREN)
+	} else {
+		if s.Init != nil {
+			p.stmt(s.Init)
+		}
+		if s.Cond != nil {
+			p.expr(s.Cond)
+		}
+		if s.Post != nil {
+			p.stmt(s.Post)
+		}
+	}
+
+	p.funcBody(s.Body)
 }

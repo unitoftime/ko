@@ -2,6 +2,8 @@ package src
 
 import (
 	"fmt"
+
+	rl "github.com/raysan5/raylib"
 )
 
 // const mystruct = struct
@@ -12,6 +14,17 @@ type mystruct struct {
 func main() {
 	const x = add(3, 5)
 	fmt.Println("Hello World {d}", mystruct{x: x})
+
+	rl.InitWindow(960, 540, "My Window Name");
+	rl.SetTargetFPS(144);
+	defer rl.CloseWindow();
+
+	for !rl.WindowShouldClose() {
+		rl.BeginDrawing();
+		rl.ClearBackground(rl.BLACK);
+		rl.EndDrawing();
+	}
+
 }
 
 // export fn add(a: i32, b: i32) i32 {

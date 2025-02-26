@@ -1,4 +1,5 @@
 const std = @import("std");
+//const raySdk = @import("sub/raylib/build.zig");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -40,6 +41,13 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(libfmt);
 
+    // --------------------------------------------------------------------------------
+    // raySdk.build(b) catch |err| {
+    //     std.debug.panic("Raylib build: {any}", .{err});
+    // };
+    // const raylib = raySdk.addRaylib(b, target, optimize, .{});
+    // --------------------------------------------------------------------------------
+
     const exe = b.addExecutable(.{
         .name = "build",
         .root_source_file = b.path("src/main.zig"),
@@ -47,10 +55,22 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    //--------------------------------------------------------------------------------
+    // https://github.com/SimonLSchlee/zigraylib/blob/main/build.zig
+    const raylib_dep = b.dependency("raylib", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.linkLibrary(raylib_dep.artifact("raylib"));
+    //--------------------------------------------------------------------------------
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
     b.installArtifact(exe);
+
+    // exe.addIncludePath(.{ .path = "sub/raylib/src" });
+    // exe.linkLibrary(raylib);
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
