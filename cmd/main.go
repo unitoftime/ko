@@ -6,7 +6,11 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
 )
+
+// Ideas:
+// - For GDB you can emit C code with #line directives to map the C code to the original code.
 
 func main() {
 	fmt.Println("Starting")
@@ -21,22 +25,36 @@ func main() {
 	for _, pkg := range packages {
 		fmt.Println("Parsing Package:", pkg.Name)
 
-		cg := CodeGenerator{}
-		ast.Walk(cg, pkg)
+		// cg := CodeGenerator{}
+		// ast.Walk(cg, pkg)
+		var buf bytes.Buffer
+		Generate(&buf, fset, pkg)
+		fmt.Println("--------------------------------------------------------------------------------")
+		fmt.Println("- Result")
+		fmt.Println("--------------------------------------------------------------------------------")
+		fmt.Println(buf.String())
 	}
 }
 
-func Generate(node ast.Node) {
-	if node == nil { return }
+// The node type must be *[ast.File], *[CommentedNode], [][ast.Decl], [][ast.Stmt],
+// or assignment-compatible to [ast.Expr], [ast.Decl], [ast.Spec], or [ast.Stmt].
+func Generate(dst io.Writer, fset *token.FileSet, root ast.Node) {
+	if root == nil { return }
 
 	// fmt.Printf("Visit", node)
+	p := printer{}
 
-	switch n := node.(type) {
-	case *ast.Package:
-		return v // If we are a package, then just keep searching
+	for node := range ast.Preorder(root) {
+		switch n := node.(type) {
+		case *ast.Package:
+			fmt.Println("Package", n)
 
-	case *ast.File:
-		fmt.Println(n.Name.Name)
+		case *ast.File:
+			fmt.Println("File", n)
+			fmt.Println(n.Name.Name)
+			p.file(n)
+			dst.Write(p.buf.Bytes())
+
 		// for _, importSpec := range file.Imports {
 		// 	path := importSpec.Path.Value
 
@@ -46,8 +64,45 @@ func Generate(node ast.Node) {
 		// 		name = nameIdent.Name
 		// 	}
 		// }
+		default:
+			// fmt.Printf("Unhandled Type: %T: %+v\n", node, node)
+		}
+	}
+}
+
+func FmtNode(dst io.Writer, fset *token.FileSet, node ast.Node) {
+	// format node
+	switch node.(type) {
+	// case ast.Expr:
+	// 	p.expr(n)
+	// case ast.Stmt:
+	// 	// A labeled statement will un-indent to position the label.
+	// 	// Set p.indent to 1 so we don't get indent "underflow".
+	// 	if _, ok := n.(*ast.LabeledStmt); ok {
+	// 		p.indent = 1
+	// 	}
+	// 	p.stmt(n, false)
+	// case ast.Decl:
+	// 	p.decl(n)
+	// case ast.Spec:
+	// 	p.spec(n, 1, false)
+	// case []ast.Stmt:
+	// 	// A labeled statement will un-indent to position the label.
+	// 	// Set p.indent to 1 so we don't get indent "underflow".
+	// 	for _, s := range n {
+	// 		if _, ok := s.(*ast.LabeledStmt); ok {
+	// 			p.indent = 1
+	// 		}
+	// 	}
+	// 	p.stmtList(n, 0, false)
+	// case []ast.Decl:
+	// 	p.declList(n)
+	// case *ast.File:
+	// 	p.file(n)
+	// default:
+	// 	goto unsupported
 	default:
-		fmt.Printf("Unhandled Type: %T: %+v\n", node, node)
+		fmt.Printf("FmtNode: Unhandled Type: %T: %+v\n", node, node)
 	}
 }
 
