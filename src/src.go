@@ -13,7 +13,7 @@ type mystruct struct {
 
 func main() {
 	const x = add(3, 5)
-	fmt.Println("Hello World {d}", mystruct{x: x})
+	fmt.Println("Hello World {d}", mystructs{x: x})
 
 	rl.InitWindow(960, 540, "My Window Name");
 	rl.SetTargetFPS(144);
@@ -24,7 +24,6 @@ func main() {
 		rl.ClearBackground(rl.BLACK);
 		rl.EndDrawing();
 	}
-
 }
 
 // export fn add(a: i32, b: i32) i32 {

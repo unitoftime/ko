@@ -7,18 +7,57 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
+	"log"
 	"os"
+	"os/exec"
 )
 
 // Ideas:
 // - For GDB you can emit C code with #line directives to map the C code to the original code.
+// - Basic raylib example: https://github.com/SimonLSchlee/zigraylib
+// - Comptime as a way to enforce compiler invariants?
+// - Comptime examples
+// fn add2(a: anytype, b: anytype) @TypeOf(a) {
+//     return a + b;
+// }
+
+// fn NewList(x: anytype) List(@TypeOf(x)) {
+//     const T = @TypeOf(x);
+//     var buffer: [10]T = undefined;
+
+//     return List(T){
+//         .items = &buffer,
+//         .len = 0,
+//     };
+// }
+
+// fn List(comptime T: type) type {
+//     return struct {
+//         items: []T,
+//         len: usize,
+
+//         pub fn init() List(T) {
+//             var buffer: [10]T = undefined;
+//             return .{
+//                 .items = &buffer,
+//                 .len = 0,
+//             };
+//         }
+
+//         pub fn size(self: List(T)) usize {
+//             return self.len;
+//         }
+//     };
+// }
+
+
 
 func main() {
 	fmt.Println("Starting")
 
 	fset := token.NewFileSet()
 	// TODO: Maybe you should be using ParseFile b/c go only supports .go files
-	packages, err := parser.ParseDir(fset, "../src/", nil, parser.ParseComments)
+	packages, err := parser.ParseDir(fset, "src/", nil, parser.ParseComments)
 	if err != nil {
 		panic(err)
 	}
@@ -35,8 +74,42 @@ func main() {
 		fmt.Println("--------------------------------------------------------------------------------")
 		fmt.Println(buf.String())
 
-		os.WriteFile("../build/src/main.zig", buf.Bytes(), 0777)
+		os.WriteFile("build/src/main.zig", buf.Bytes(), 0777)
 	}
+
+	cmd := exec.Command("zig", "build", "run")
+	cmd.Dir = "./build/"
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		out, _ := io.ReadAll(stdout)
+		e, _ := io.ReadAll(stderr)
+
+		fmt.Fprint(os.Stdout, "--------------------------------------------------------------------------------\n")
+		fmt.Fprint(os.Stdout, "- stdout\n")
+		fmt.Fprint(os.Stdout, "--------------------------------------------------------------------------------\n")
+		fmt.Fprint(os.Stdout, string(out))
+
+
+		fmt.Fprint(os.Stderr, "--------------------------------------------------------------------------------\n")
+		fmt.Fprint(os.Stdout, "- stderr\n")
+		fmt.Fprint(os.Stderr, "--------------------------------------------------------------------------------\n")
+		fmt.Fprint(os.Stderr, string(e))
+		fmt.Fprint(os.Stderr, "--------------------------------------------------------------------------------\n")
+	}()
+
+
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Finish")
 }
 
 // The node type must be *[ast.File], *[CommentedNode], [][ast.Decl], [][ast.Stmt],
@@ -45,7 +118,7 @@ func Generate(dst io.Writer, fset *token.FileSet, root ast.Node) {
 	if root == nil { return }
 
 	// fmt.Printf("Visit", node)
-	p := printer{}
+	p := newPrinter()
 
 	for node := range ast.Preorder(root) {
 		switch n := node.(type) {
@@ -70,6 +143,13 @@ func Generate(dst io.Writer, fset *token.FileSet, root ast.Node) {
 		default:
 			// fmt.Printf("Unhandled Type: %T: %+v\n", node, node)
 		}
+	}
+
+	fmt.Printf("(len: %d): %v\n", len(p.symbolLut["main.zig"]), p.symbolLut)
+	lines := p.symbolLut["main.zig"]
+	for i := range lines {
+		outputLineNum := i + 1
+		fmt.Println(fset.Position(lines[i].Pos), ": ", outputLineNum)
 	}
 }
 

@@ -51,9 +51,38 @@ const (
 	// INTERFACE = "interface"
 // )
 
+type lineData struct {
+	// line string // TODO: Track each symbol I guess?
+	// ogLineNum int // The original line number that gene
+	Pos token.Pos
+}
+
 type printer struct {
+	currentLine int
+	lastPos token.Pos
+	symbolLut map[string][]lineData // Map file strings to a slice of each line
+	// E.G. main.zig: []lineData{...}
 	buf bytes.Buffer
 }
+func newPrinter() printer {
+	return printer{
+		// currentLine: 1,
+		symbolLut: make(map[string][]lineData),
+	}
+}
+
+func (p *printer) addLine() {
+	curFile := "main.zig"
+	cur, ok := p.symbolLut[curFile]
+	if !ok {
+		cur = make([]lineData, 0)
+	}
+	cur = append(cur, lineData{p.lastPos})
+	p.symbolLut[curFile] = cur
+
+	p.currentLine++
+}
+
 
 func (p *printer) file(src *ast.File) {
 	// p.print("package ", src.Name.Name, LINE)
@@ -356,9 +385,15 @@ func (p *printer) print(args ...any) {
 		switch v := a.(type) {
 		case string:
 			fmt.Fprint(&p.buf, v)
+			if v == LINE {
+				// fmt.Fprintf(&p.buf, "LINE: %d: ", p.currentLine) // Note: Helpful for debugging
+				p.addLine()
+			}
 		case *ast.Ident:
+			p.lastPos = v.NamePos
 			fmt.Fprint(&p.buf, v.Name)
 		case *ast.BasicLit:
+			p.lastPos = v.ValuePos
 			fmt.Fprint(&p.buf, v.Value)
 		case token.Token:
 			p.token(v)
@@ -415,6 +450,7 @@ func (p *printer) exprList(list []ast.Expr) {
 }
 
 func (p *printer) selectorExpr(x *ast.SelectorExpr) {
+	p.lastPos = x.Sel.NamePos
 	p.expr(x.X)
 	p.print(".")
 	p.print(x.Sel)
@@ -428,9 +464,11 @@ func (p *printer) expr(expr ast.Expr) {
 		p.print("BadExpr")
 
 	case *ast.Ident:
+		p.lastPos = x.NamePos
 		p.print(x)
 
 	case *ast.BinaryExpr:
+		p.lastPos = x.OpPos
 		// if depth < 1 {
 		// 	p.internalError("depth < 1:", depth)
 		// 	depth = 1
@@ -483,6 +521,7 @@ func (p *printer) expr(expr ast.Expr) {
 		// if p.Config.Mode&normalizeNumbers != 0 {
 		// 	x = normalizedNumber(x)
 		// }
+		p.lastPos = x.ValuePos
 		p.print(x)
 
 	// case *ast.FuncLit:
@@ -625,6 +664,7 @@ func (p *printer) expr(expr ast.Expr) {
 		p.print(RPAREN)
 
 	case *ast.CompositeLit:
+		p.lastPos = x.Rbrace
 		// composite literal elements that are composite literals themselves may have the type omitted
 		if x.Type != nil {
 			_, ok := x.Type.(*ast.StructType)
@@ -634,7 +674,6 @@ func (p *printer) expr(expr ast.Expr) {
 				p.expr(x.Type)
 			}
 		}
-		fmt.Printf("AAAA: %+v\n", x.Elts)
 		p.print(LBRACE)
 		p.exprList(x.Elts)
 		// // do not insert extra line break following a /*-style comment
@@ -713,11 +752,12 @@ func (p *printer) expr(expr ast.Expr) {
 
 var stdShims = map[string]string{
 	"fmt": "@import(\"lib/fmt.zig\")",
-	"github.com/raysan5/raylib": `@cImport({
-    @cInclude("raylib.h");
-    @cInclude("raymath.h");
-    @cInclude("rlgl.h");
-})`,
+// 	"github.com/raysan5/raylib": `@cImport({
+//     @cInclude("raylib.h");
+//     @cInclude("raymath.h");
+//     @cInclude("rlgl.h");
+// })`,
+	"github.com/raysan5/raylib": "@cImport({@cInclude(\"raylib.h\"); @cInclude(\"raymath.h\");  @cInclude(\"rlgl.h\"); })",
 }
 
 func getPackagePath(p string) string {
@@ -746,6 +786,8 @@ func (p *printer) spec(spec ast.Spec) {
 			// p.expr(s.Path) // TODO: Sanitize?
 			p.print(pkgPath)
 			p.print(SEMICOLON)
+
+			// p.currentLine += strings.Count(pkgPath, "\n") + 1
 		} else {
 			p.print(CONST, SPACE)
 			name := nameFromPath(s.Path.Value)
@@ -754,6 +796,10 @@ func (p *printer) spec(spec ast.Spec) {
 			// p.expr(s.Path) // TODO: Sanitize?
 			p.print(pkgPath)
 			p.print(SEMICOLON)
+
+			// numLines := strings.Count(name, "\n") + 1
+			// fmt.Println("NUM LINES:", strings.Count(name, "\n") + 1)
+			// p.currentLine += numLines
 		}
 
 		// if s.Name != nil {
