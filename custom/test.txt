@@ -1,0 +1,60 @@
+package math
+
+// other comment
+// x = "asdf"
+
+// x < b
+// x <= b
+// x == b
+// return x + b
+// test comment
+
+func fib(n int) int {
+	if n <= 1 {
+		return n
+	}
+	return fib(n - 2) + fib(n - 1)
+}
+
+func add(a int, b int) int {
+	var x = a + b * 5 / 3
+
+	if a < b {
+		x = a + b
+	}	else {
+		x = a - b
+	}
+	return x
+}
+
+// Note: I think this only works in gcc and isn't standard c
+func closure() {
+	var i = 0
+	func count() {
+		i = i + 1
+	}
+
+	count()
+	count()
+	count()
+	printf("Closure Count: %d", i)
+}
+
+func main() int {
+	printf("hello world, %d\n", add(1, 2))
+
+	for var i = 0; i < 20; i = i + 1 {
+		printf("Fib %d: %d\n", i, fib(i))
+	}
+
+	closure()
+
+	return 0
+}
+
+// #include <stdio.h>
+
+// int main() {
+//   printf("Hello, World!\n");
+//   return 0;
+// }
