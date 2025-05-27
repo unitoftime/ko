@@ -47,7 +47,8 @@ const (
 
 	// Literals
 	IDENT
-	NUMBER //TODO: Rename: NUMBER?
+	INT
+	FLOAT
 	STRING
 	LINECOMMENT
 
@@ -97,7 +98,8 @@ var tokens = []string{
 	OR: "||",
 
 	IDENT:   "IDENT",
-	NUMBER:     "NUMBER",
+	INT:     "INT",
+	FLOAT:     "FLOAT",
 	STRING:     "STRING",
 	LINECOMMENT: "LINECOMMENT",
 
@@ -130,6 +132,7 @@ func (t TokenType) String() string {
 }
 
 type Position struct {
+	filename string
 	line   int
 	column int
 }
@@ -140,10 +143,10 @@ type Lexer struct {
 	reader *bufio.Reader
 }
 
-func NewLexer(reader io.Reader) *Lexer {
+func NewLexer(filename string, reader io.Reader) *Lexer {
 	return &Lexer{
 		lastToken: ILLEGAL,
-		pos:    Position{line: 1, column: 0},
+		pos:    Position{filename: filename, line: 1, column: 0},
 		reader: bufio.NewReader(reader),
 	}
 }
@@ -170,7 +173,7 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		switch r {
 		case '\n':
 			// Decide if we want to add semicolon
-			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == NUMBER {
+			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == INT || l.lastToken == FLOAT {
 				l.lastToken = SEMI
 				l.resetPosition()
 				return l.pos, SEMI, ";"
@@ -284,9 +287,9 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 				// backup and let lexInt rescan the beginning of the int
 				startPos := l.pos
 				l.backup()
-				lit := l.lexNumber()
-				l.lastToken = NUMBER
-				return startPos, NUMBER, lit
+				lit, tokType := l.lexNumber()
+				l.lastToken = tokType
+				return startPos, l.lastToken, lit
 			} else if unicode.IsLetter(r) {
 				// backup and let lexIdent rescan the beginning of the ident
 				startPos := l.pos
@@ -323,15 +326,20 @@ func (l *Lexer) backup() {
 
 // lexInt scans the input until the end of an integer and then returns the
 // literal.
-func (l *Lexer) lexNumber() string {
+func (l *Lexer) lexNumber() (string, TokenType) {
+	tokType := INT
 	var lit string
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
 			if err == io.EOF {
 				// at the end of the int
-				return lit
+				return lit, tokType
 			}
+		}
+
+		if r == '.' {
+			tokType = FLOAT
 		}
 
 		l.pos.column++
@@ -341,7 +349,7 @@ func (l *Lexer) lexNumber() string {
 		} else {
 			// scanned something not in the integer
 			l.backup()
-			return lit
+			return lit, tokType
 		}
 	}
 }
@@ -360,7 +368,7 @@ func (l *Lexer) lexIdent() string {
 		}
 		l.pos.column++
 
-		if unicode.IsLetter(r) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
 			lit = lit + string(r)
 		} else {
 			// scanned something not in the identifier
