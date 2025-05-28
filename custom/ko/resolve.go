@@ -7,6 +7,7 @@ import (
 )
 
 type Scope struct {
+	funcNode *FuncNode
 	ident map[string]Node // A map of identifiers for the scope
 	types map[string]Node // A map of types for the scope
 }
@@ -130,6 +131,16 @@ func (r *Resolver) CheckScope(name string) (Node, bool) {
 
 	// Fallback to builtin
 	return r.builtin.CheckIdent(name)
+}
+
+func (r *Resolver) GetFuncScope() (*FuncNode, bool) {
+	for i := len(r.scopes.Buffer) - 1; i >= 0; i-- {
+		if r.scopes.Buffer[i].funcNode != nil {
+			return r.scopes.Buffer[i].funcNode, true
+		}
+	}
+
+	return nil, false
 }
 
 func (r *Resolver) PushScope() *Scope {
@@ -294,6 +305,9 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 	case *CommentNode:
 		// Skip
 	case *StructNode:
+		if t.ty != UnknownType {
+			return t.ty
+		}
 		fmt.Println("StructNode:", t)
 		for _, field := range t.fields {
 			t.ty = r.resolveLocal(field)
@@ -309,6 +323,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 		// Note: This only handles function body, the function type gets resolved earlier
 		m := r.PushScope()
+		m.funcNode = t
 
 		if t.arguments != nil {
 			for _, arg := range t.arguments.args {
@@ -319,9 +334,11 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 		if t.returns != nil {
 			for _, ret := range t.returns.args {
-				fmt.Println("t.returns.args")
+				fmt.Println("t.returns.args", ret.name.str)
 				r.resolveLocal(ret)
-				m.AddIdent(ret.name.str, ret)
+				if ret.name.str != "" {
+					m.AddIdent(ret.name.str, ret)
+				}
 			}
 		}
 
@@ -405,8 +422,30 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 	case *ReturnNode:
 		fmt.Println("ReturnNode:", t)
+		t.ty = r.resolveLocal(t.expr)
 		// TODO: Check to make sure return type matches func return type or blank if void
-		return r.resolveLocal(t.expr)
+		currentFuncScope, ok := r.GetFuncScope()
+		if !ok {
+			// TODO: Positioning
+			printErr(Token{}, fmt.Sprintf("Return statement must be inside a function: %s", "return"))
+		}
+
+		//----------------------------------------
+		// TODO: We only support 1 argument currently
+		//----------------------------------------
+
+		// Match return args with func args
+		if len(currentFuncScope.returns.args) != 1 {
+			// TODO: Positioning
+			printErr(Token{}, fmt.Sprintf("Mismatched arguments with return: %s", "return"))
+		}
+
+		if currentFuncScope.returns.args[0].Type() != t.ty {
+			// TODO: Positioning
+			printErr(Token{}, fmt.Sprintf("Incorrect return type: %s", "return"))
+		}
+
+		return t.ty
 
 	case *CallExpr:
 		fmt.Println("CallExpr:", t)
@@ -521,7 +560,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 		commonType, success = checkLitTypeCast(left, right)
 
 		if !success {
-			printErr(t.op, fmt.Sprintf("Mismatched types: %s, %s, %s", left, t.op.str, right))
+			printErr(t.op, fmt.Sprintf("Mismatched types: %+v, %s, %+v", left, t.op.str, right))
 			return UnknownType, false
 		}
 	}

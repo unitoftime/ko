@@ -12,15 +12,8 @@ func main() {
 
 	// runBenchmark()
 
-	// printf("GlobAdd(9): %d\n", add2(4))
 
-	// var st = structTest{1, 2}
-	// structTestPrint(st)
-	// structTestPrint(structTest{3, 4})
-
-	// structInFunc()
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
-
 	// closure()
 }
 
@@ -90,6 +83,23 @@ func TestGlobalVariableStruct() {
 	Assert(globPoint == Point{2, 3})
 }
 
+func reverse(val Point) Point {
+	var tmp = val.X
+	val.X = val.Y
+	val.Y = tmp
+	return val
+}
+func TestCallWithStruct() {
+	var p1 = Point{1, 2}
+	var p2 = Point{2, 1}
+
+	var p3 = reverse(p1)
+	var p4 = reverse(p3)
+	Assert(p1 == p3)
+	Assert(p1 != p2)
+	Assert(p2 == p4)
+}
+
 // func backtraceTest(n int) int {
 // 	if n <= 1 {
 // 		printBacktrace()
@@ -97,19 +107,6 @@ func TestGlobalVariableStruct() {
 // 	}
 // 	return n + backtraceTest(n - 1)
 // }
-
-// func add(a int, b int) int {
-// 	var x = a + b * 5 / 3
-
-// 	if a < b {
-// 		x = a + b
-// 	}	else {
-// 		x = a - b
-// 	}
-// 	return x
-// }
-
-
 
 // // TODO: I think when I do closures I may want to just manually handle them, rather than rely on gcc
 // // // Note: I think this only works in gcc and isn't standard c

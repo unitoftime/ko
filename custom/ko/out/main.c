@@ -67,24 +67,28 @@ typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 #line 3 "./tests/test.k"
 int main ();
-#line 27 "./tests/test.k"
+#line 20 "./tests/test.k"
 void TestHelloWorld ();
-#line 31 "./tests/test.k"
+#line 24 "./tests/test.k"
 void TestVariablesAndArithmetic ();
-#line 38 "./tests/test.k"
+#line 31 "./tests/test.k"
 uint64_t fib (uint64_t n );
-#line 45 "./tests/test.k"
+#line 38 "./tests/test.k"
 void TestFib ();
-#line 56 "./tests/test.k"
+#line 49 "./tests/test.k"
 void TestStructs ();
-#line 63 "./tests/test.k"
+#line 56 "./tests/test.k"
 void TestForLoop ();
-#line 74 "./tests/test.k"
+#line 67 "./tests/test.k"
 void TestIfStatement ();
-#line 83 "./tests/test.k"
+#line 76 "./tests/test.k"
 void TestGlobalVariable ();
-#line 89 "./tests/test.k"
+#line 82 "./tests/test.k"
 void TestGlobalVariableStruct ();
+#line 86 "./tests/test.k"
+Point reverse (Point val );
+#line 92 "./tests/test.k"
+void TestCallWithStruct ();
 struct Point {
 	int X;
 	int Y;
@@ -92,9 +96,9 @@ struct Point {
 bool __ko_Point_equality(Point a, Point b){
 	return ((a.X == b.X) && (a.Y == b.Y));
 }
-#line 82 "./tests/test.k"
+#line 75 "./tests/test.k"
 int globA = 5;
-#line 88 "./tests/test.k"
+#line 81 "./tests/test.k"
 Point globPoint = { 2, 3 };
 // package main
 #line 3 "./tests/test.k"
@@ -110,45 +114,40 @@ int main () {
 	;
 	;
 	;
-	;
-	;
-	;
-	;
-	;
 return __mainRet__;
 }
-#line 27 "./tests/test.k"
+#line 20 "./tests/test.k"
 void TestHelloWorld () {
 	printf("Hello World");
 }
-#line 31 "./tests/test.k"
+#line 24 "./tests/test.k"
 void TestVariablesAndArithmetic () {
 	int a = 10;
 	int b = 20;
 	int c = ((a * b) + 5);
 	Assert((c == 205));
 }
-#line 38 "./tests/test.k"
+#line 31 "./tests/test.k"
 uint64_t fib (uint64_t n ) {
 	if ((n <= 1)) {
 		return (n);
 	};
 	return ((fib((n - 2)) + fib((n - 1))));
 }
-#line 45 "./tests/test.k"
+#line 38 "./tests/test.k"
 void TestFib () {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
-#line 56 "./tests/test.k"
+#line 49 "./tests/test.k"
 void TestStructs () {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
 	Assert((p1.X == p2.Y));
 	Assert((p1.Y == p2.X));
 }
-#line 63 "./tests/test.k"
+#line 56 "./tests/test.k"
 void TestForLoop () {
 	int num = 20;
 	int count = 0;
@@ -159,7 +158,7 @@ void TestForLoop () {
 	};
 	Assert((count == num));
 }
-#line 74 "./tests/test.k"
+#line 67 "./tests/test.k"
 void TestIfStatement () {
 	if ((5 < 10)) {
 		Assert((1 == 1));
@@ -167,12 +166,29 @@ void TestIfStatement () {
 		Assert((1 == 2));
 	};
 }
-#line 83 "./tests/test.k"
+#line 76 "./tests/test.k"
 void TestGlobalVariable () {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
-#line 89 "./tests/test.k"
+#line 82 "./tests/test.k"
 void TestGlobalVariableStruct () {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
+}
+#line 86 "./tests/test.k"
+Point reverse (Point val ) {
+	int tmp = val.X;
+	val.X = val.Y;
+	val.Y = tmp;
+	return (val);
+}
+#line 92 "./tests/test.k"
+void TestCallWithStruct () {
+	Point p1 = (Point){ 1, 2 };
+	Point p2 = (Point){ 2, 1 };
+	Point p3 = reverse(p1);
+	Point p4 = reverse(p3);
+	Assert((__ko_Point_equality(p1, p3) == true));
+	Assert((__ko_Point_equality(p1, p2) != true));
+	Assert((__ko_Point_equality(p2, p4) == true));
 }
