@@ -127,8 +127,8 @@ func (buf *genBuf) Generate(result ParseResult) {
 	buf.Add("int __mainRet__ = 0;").Line()
 
 	// Forward Declare all types
-	for i := range result.typeList {
-		buf.PrintForwardDecl(result.typeList[i])
+	for _, node := range result.typeList {
+		buf.PrintForwardDecl(node)
 		buf.Add(";").Line()
 	}
 
@@ -139,9 +139,14 @@ func (buf *genBuf) Generate(result ParseResult) {
 	}
 
 	// Complete all types
-	for i := range result.typeList {
-		buf.PrintCompleteType(result.typeList[i])
+	for _, node := range result.typeList {
+		buf.PrintCompleteType(node)
 		buf.Add(";").Line()
+
+		structNode, isStruct := node.(*StructNode)
+		if isStruct {
+			buf.printStructEqualityFunction(structNode)
+		}
 	}
 
 	// Declare all global variables
@@ -336,12 +341,27 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *BinaryExpr:
-		// TODO: For equality, you need to emit custom struct equality checks
-		buf.Add("(")
-		buf.Print(t.left)
-		buf.Add(" ").Add(t.op.str).Add(" ")
-		buf.Print(t.right)
-		buf.Add(")")
+		fmt.Println(t.left, t.right)
+		if t.left.Type().isStruct || t.right.Type().isStruct {
+			ty := t.left.Type()
+			buf.Add("(")
+			buf.Add("__ko_" + ty.name +"_equality(")
+			buf.Print(t.left)
+			buf.Add(", ")
+			buf.Print(t.right)
+			buf.Add(")")
+			buf.Add(" ").Add(t.op.str).Add(" ")
+			buf.Add("true")
+			buf.Add(")")
+		} else {
+			// Simple binary expression
+			buf.Add("(")
+			buf.Print(t.left)
+			buf.Add(" ").Add(t.op.str).Add(" ")
+			buf.Print(t.right)
+			buf.Add(")")
+		}
+
 	case *UnaryExpr:
 		buf.Add("(").Add(t.op.str)
 		buf.Print(t.right)
@@ -365,4 +385,33 @@ func (buf *genBuf) Print(n Node) {
 	default:
 		panic(fmt.Sprintf("Print: Unknown NodeType: %T", t))
 	}
+}
+
+func equalityFunctionName(name string) string {
+	return "__ko_"+name+"_equality"
+}
+
+func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
+	ty := t.Type()
+	buf.Add("bool ").Add(equalityFunctionName(ty.name)).
+		Add("(").
+		Add(ty.name).Add(" a").
+		Add(", ").
+		Add(ty.name).Add(" b").
+		Add(") {").Line()
+	buf.indent++
+
+	// buf.Add("return a == b;").Line()
+	buf.Add("return (")
+	for i, field := range t.fields {
+		fname := field.name.str
+		buf.Add("(a.").Add(fname).Add(" == ").Add("b.").Add(fname).Add(")")
+		if i < len(t.fields)-1 {
+			buf.Add(" && ")
+		}
+	}
+	buf.Add(");").Line()
+
+	buf.indent--
+	buf.Add("}").Line()
 }

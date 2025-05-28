@@ -246,6 +246,9 @@ struct Point {
 	int Y;
 };
 ;
+bool __ko_Point_equality(Point a, Point b) {
+	return ((a.X == b.X) && (a.Y == b.Y));
+}
 #line 82 "./tests/test.k"
 int globA = 5;
 #line 88 "./tests/test.k"
@@ -328,5 +331,5 @@ void TestGlobalVariable () {
 }
 #line 89 "./tests/test.k"
 void TestGlobalVariableStruct () {
-	;
+	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }

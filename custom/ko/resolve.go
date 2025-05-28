@@ -6,12 +6,6 @@ import (
 	"github.com/unitoftime/flow/ds"
 )
 
-// DO three passes
-// 1. Register all global identifiers and types and functions
-// 2. Go through all global ident list and typecheck them (they should all be interdependent on eachother
-// 3. switch to local mode and type check all function scopes
-
-
 type Scope struct {
 	ident map[string]Node // A map of identifiers for the scope
 	types map[string]Node // A map of types for the scope
@@ -149,12 +143,12 @@ func (r *Resolver) PopScope() {
 
 func NewResolver() *Resolver {
 	builtin := NewScope()
-	builtin.AddIdent("printf", &BuiltinNode{&Type{"void", false}})
-	builtin.AddIdent("Assert", &BuiltinNode{&Type{"void", false}})
+	builtin.AddIdent("printf", &BuiltinNode{&Type{"void", false, false}})
+	builtin.AddIdent("Assert", &BuiltinNode{&Type{"void", false, false}})
 
 	// Add builtin types
-	builtin.AddIdent("u64", &BuiltinNode{&Type{"u64", true}})
-	builtin.AddIdent("int", &BuiltinNode{&Type{"int", true}})
+	builtin.AddIdent("u64", &BuiltinNode{&Type{"u64", true, false}})
+	builtin.AddIdent("int", &BuiltinNode{&Type{"int", true, false}})
 
 	return &Resolver{
 		builtin: builtin,
@@ -190,15 +184,36 @@ func (r *Resolver) RegisterGlobal(result ParseResult) {
 
 	// Resolve
 	for i := range result.typeList {
-		r.resolveGlobal(result.typeList[i])
+		fmt.Println("Resolve:", result.typeList[i])
+		r.resolveLocal(result.typeList[i])
 	}
 
 	for i := range result.fnList {
-		r.resolveGlobal(result.fnList[i])
+		fmt.Println("Resolve:", result.fnList[i])
+		// r.resolveLocal(result.fnList[i])
+		r.resolveFuncNodePrototype(result.fnList[i])
 	}
 
 	for i := range result.varList {
-		r.resolveGlobal(result.varList[i])
+		fmt.Println("ResolveVarList:", result.varList[i])
+		ty := r.resolveLocal(result.varList[i])
+		fmt.Println("ResolveVarList.Finish:", *ty)
+		fmt.Println(result.varList[i])
+	}
+}
+
+func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
+	// TODO: Build a Func type that has all the filds and returns
+	if t.returns == nil || len(t.returns.args) == 0 {
+		t.ty = VoidType
+	} else {
+		retName := t.returns.args[0].kind.str
+		retNode, ok := r.CheckScope(retName)
+		if !ok {
+			printErr(Token{pos: t.pos}, fmt.Sprintf("Unknown Type: %s", retName))
+		}
+		t.ty = r.resolveLocal(retNode)
+		fmt.Println("ResolveGlobal:", t, t.ty)
 	}
 }
 
@@ -262,50 +277,6 @@ func (r *Resolver) registerGlobal(n Node) {
 	}
 }
 
-func (r *Resolver) resolveGlobal(node Node) *Type {
-	switch t := node.(type) {
-	case *FuncNode:
-		// TODO: Build a Func type that has all the filds and returns
-		if t.returns == nil || len(t.returns.args) == 0 {
-			t.ty = VoidType
-		} else {
-			retName := t.returns.args[0].kind.str
-			retNode, ok := r.CheckScope(retName)
-			if !ok {
-				printErr(Token{pos: t.pos}, fmt.Sprintf("Unknown Type: %s", retName))
-			}
-			t.ty = r.resolveGlobal(retNode)
-			fmt.Println("ResolveGlobal:", t, t.ty)
-		}
-
-		return t.ty
-	case *VarStmt:
-		t.ty = r.resolveLocal(t.initExpr)
-		return t.ty
-	case *StructNode:
-		for _, field := range t.fields {
-			t.ty = r.resolveGlobal(field)
-		}
-		// TODO: Build a struct type that would have all the fields of the structs and their types
-		t.ty = &Type{t.ident.str, true}
-		return t.ty
-	case *Arg:
-		def, ok := r.CheckScope(t.kind.str)
-		if !ok {
-			printErr(t.name, fmt.Sprintf("Unknown Type: %s", t.kind.str))
-		}
-		fmt.Println("Resolve Arg... Def:", def)
-		t.ty = def.Type()
-		return t.ty
-
-	case *BuiltinNode:
-		return t.ty
-	default:
-		panic(fmt.Sprintf("resolveGlobal: Unknown NodeType: %T", t))
-	}
-	return UnknownType
-}
-
 // Returns the type of that node, if untyped returns ""
 // For functions: returns the type that the node expression returns
 func (r *Resolver) resolveLocal(node Node) *Type {
@@ -324,17 +295,19 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// Skip
 	case *StructNode:
 		fmt.Println("StructNode:", t)
+		for _, field := range t.fields {
+			t.ty = r.resolveLocal(field)
+		}
+		// TODO: Build a struct type that would have all the fields of the structs and their types
+		t.ty = &Type{t.ident.str, true, true}
 		if r.LocalScope() {
-			for _, field := range t.fields {
-				t.ty = r.resolveGlobal(field)
-			}
-			// TODO: Build a struct type that would have all the fields of the structs and their types
-			t.ty = &Type{t.ident.str, true}
 			r.Scope().AddIdent(t.ident.str, t)
 		}
+		return t.ty
 	case *FuncNode:
 		fmt.Println("FuncNode:", t)
 
+		// Note: This only handles function body, the function type gets resolved earlier
 		m := r.PushScope()
 
 		if t.arguments != nil {
@@ -397,12 +370,13 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 
 	case *VarStmt:
-		fmt.Printf("VarStmt: %T +%v\n", t.initExpr, t.initExpr)
+		fmt.Printf("VarStmt: %s, %T +%v\n", t.name.str, t.initExpr, t.initExpr)
 		t.ty = r.resolveLocal(t.initExpr)
-		fmt.Printf("VarStmtType: %+v\n", t.ty)
+
 		if r.LocalScope() {
 			r.Scope().AddIdent(t.name.str, t) // For global we register it before
 		}
+		fmt.Printf("VarStmt.Typed: %+v\n", t)
 		return t.ty
 
 	case *Arg:
@@ -458,7 +432,8 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		if !ok {
 			printErr(t.name, fmt.Sprintf("Unknown Variable: %s", t.name.str))
 		}
-		return n.Type()
+		t.ty = n.Type()
+		return t.ty
 	case *SetExpr:
 		fmt.Println("SetExpr:", t)
 		t.ty = r.resolveLocal(t.obj)
@@ -485,9 +460,6 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 	case *BinaryExpr:
 		fmt.Println("BinaryExpr:", t)
-		// lType := r.resolveLocal(t.left)
-		// rType := r.resolveLocal(t.right)
-		// resultType, success := checkBinaryExpr(lType, rType, t.op)
 		resultType, success := r.checkBinaryExpr(t)
 		if !success {
 			// printErr(t.op, fmt.Sprintf("Mismatched types: %s, %s, %s", lType, t.op.str, rType))
@@ -520,7 +492,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		// fmt.Println("CompLitExpr:", t)
+		fmt.Println("CompLitExpr.Typed:", t)
 		return t.ty
 
 	case *LitExpr:
@@ -528,6 +500,8 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return t.Type()
 		// t.ty = typeOf(t)
 		// return t.ty
+	case *BuiltinNode:
+		return t.ty
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
 	}

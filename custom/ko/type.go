@@ -9,10 +9,11 @@ type Type struct {
 
 	// General Type information
 	comparable bool
+	isStruct bool
 }
 
 var (
-	BoolType = &Type{"bool", true}
+	BoolType = &Type{"bool", true, false}
 )
 
 // type Type interface {
@@ -99,13 +100,13 @@ const StringLitName = "untypedString"
 
 var (
 	UnknownType *Type = nil
-	VoidType *Type = &Type{"void", false} // TODO: Comparability?
+	VoidType *Type = &Type{"void", false, false} // TODO: Comparability?
 
 	// These are literal types that can be dynamically resolved to whatever is needed
 	// TODO: UntypedBool,Int,Rune,Float,Complex,String,Nil?
-	IntLitType *Type = &Type{IntLitName, true}
-	FloatLitType *Type = &Type{FloatLitName, true}
-	StringLitType *Type = &Type{StringLitName, true}
+	IntLitType *Type = &Type{IntLitName, true, false}
+	FloatLitType *Type = &Type{FloatLitName, true, false}
+	StringLitType *Type = &Type{StringLitName, true, false}
 
 	// TODO: Should I do compound lits this way too?
 )
@@ -173,83 +174,83 @@ func typeStr(in *Type) string {
 	return ret
 }
 
-func typeOf(node Node) *Type {
-	if node == nil {
-		return UnknownType
-	}
-	switch t := node.(type) {
-	// case *FileNode:
-	// case PackageNode:
-	// case CommentNode:
-	// case Stmt:
-	// case ForStmt:
-	// case IfStmt:
-	// case *CurlyScope:
-	// case *ArgNode:
-	// case *ReturnNode:
-	// case CallExpr:
-	// case GetExpr:
-	// case SetExpr:
-	// case AssignExpr:
-	// case CompLitExpr:
-	// case VarExpr:
+// func typeOf(node Node) *Type {
+// 	if node == nil {
+// 		return UnknownType
+// 	}
+// 	switch t := node.(type) {
+// 	// case *FileNode:
+// 	// case PackageNode:
+// 	// case CommentNode:
+// 	// case Stmt:
+// 	// case ForStmt:
+// 	// case IfStmt:
+// 	// case *CurlyScope:
+// 	// case *ArgNode:
+// 	// case *ReturnNode:
+// 	// case CallExpr:
+// 	// case GetExpr:
+// 	// case SetExpr:
+// 	// case AssignExpr:
+// 	// case CompLitExpr:
+// 	// case VarExpr:
 
-	case *BinaryExpr:
-		if t.ty != UnknownType {
-			return t.ty
-		}
-		panic("unknown binaryexpr type")
-	case *CompLitExpr:
-		if t.ty != UnknownType {
-			return t.ty
-		}
-		panic("unknown complit type")
+// 	case *BinaryExpr:
+// 		if t.ty != UnknownType {
+// 			return t.ty
+// 		}
+// 		panic("unknown binaryexpr type")
+// 	case *CompLitExpr:
+// 		if t.ty != UnknownType {
+// 			return t.ty
+// 		}
+// 		panic("unknown complit type")
 
-	case *VarStmt:
-		if t.ty != UnknownType {
-			return t.ty
-		}
-		return t.ty
+// 	case *VarStmt:
+// 		if t.ty != UnknownType {
+// 			return t.ty
+// 		}
+// 		return t.ty
 
-	case *StructNode:
-		return &Type{t.ident.str, true}
+// 	case *StructNode:
+// 		return &Type{t.ident.str, true, true}
 
-	case *FuncNode:
-		panic("YOU CANT CONSTRUCT THESE HERE THY NEED TOBE LOOKED UP FROM SCOPE EVERY TIME!")
-		// Note: This needs to return a more complicated type that can be given args and can return args
-		if t.returns == nil || len(t.returns.args) == 0 {
-			return UnknownType
-		}
-		return &Type{t.returns.args[0].kind.str, true}
+// 	case *FuncNode:
+// 		panic("YOU CANT CONSTRUCT THESE HERE THY NEED TOBE LOOKED UP FROM SCOPE EVERY TIME!")
+// 		// Note: This needs to return a more complicated type that can be given args and can return args
+// 		if t.returns == nil || len(t.returns.args) == 0 {
+// 			return UnknownType
+// 		}
+// 		return &Type{t.returns.args[0].kind.str, true}
 
-		// Note: Somewhat confusingly, we actually want the type that the funcNode *returns* not the type of the funcnode
-		// rets := csvJoinArgNode(t.returns)
-		// return rets
+// 		// Note: Somewhat confusingly, we actually want the type that the funcNode *returns* not the type of the funcnode
+// 		// rets := csvJoinArgNode(t.returns)
+// 		// return rets
 
-		// args := csvJoinArgNode(t.arguments)
-		// rets := csvJoinArgNode(t.returns)
-		// return fmt.Sprintf("func(%s) (%s)", args, rets)
+// 		// args := csvJoinArgNode(t.arguments)
+// 		// rets := csvJoinArgNode(t.returns)
+// 		// return fmt.Sprintf("func(%s) (%s)", args, rets)
 
-	case *Arg:
-		return &Type{t.kind.str, true}
-	case *LitExpr:
-		switch t.kind {
-		case INT:
-			return IntLitType
-		case FLOAT:
-			return FloatLitType
-		case STRING:
-			return StringLitType
-		default:
-			panic("AAA")
-		}
-	case *BuiltinNode:
-		return t.ty
+// 	case *Arg:
+// 		return &Type{t.kind.str, true}
+// 	case *LitExpr:
+// 		switch t.kind {
+// 		case INT:
+// 			return IntLitType
+// 		case FLOAT:
+// 			return FloatLitType
+// 		case STRING:
+// 			return StringLitType
+// 		default:
+// 			panic("AAA")
+// 		}
+// 	case *BuiltinNode:
+// 		return t.ty
 
-	default:
-		panic(fmt.Sprintf("typeOf: Unknown NodeType: %T", t))
-	}
-}
+// 	default:
+// 		panic(fmt.Sprintf("typeOf: Unknown NodeType: %T", t))
+// 	}
+// }
 
 // func csvJoinArgNode(node *ArgNode) Type {
 // 	if node == nil { return "" }
@@ -274,7 +275,7 @@ func (r *Resolver) isComparable(n Node) bool {
 		// TODO: Check every field to make sure it is also comparable
 		return true
 	case *IdentExpr:
-		nodeDef, ok := r.Scope().CheckIdent(t.tok.str)
+		nodeDef, ok := r.CheckScope(t.tok.str)
 		if !ok {
 			printErr(t.tok, fmt.Sprintf("Unable to find identifier: %s", t.tok.str))
 			return false

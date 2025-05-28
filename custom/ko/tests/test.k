@@ -87,7 +87,7 @@ func TestGlobalVariable() {
 
 var globPoint = Point{2, 3}
 func TestGlobalVariableStruct() {
-	// Assert(globPoint == Point{2, 3})
+	Assert(globPoint == Point{2, 3})
 }
 
 // func backtraceTest(n int) int {
