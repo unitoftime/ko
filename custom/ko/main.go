@@ -44,15 +44,15 @@ func main() {
 		compile(getArg(2))
 	case CmdRun:
 		compile(getArg(2))
-		localCmd("./run.bin")
+		localCmd(BuildDirectory, "./run.bin")
 	}
 
 }
 
-func localCmd(name string, args ...string) error {
+func localCmd(dir, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 
-	cmd.Dir = BuildDirectory
+	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -96,8 +96,30 @@ func compile(inputFile string) {
 	err = os.WriteFile(BuildDirectory + "main.c", buf.buf.Bytes(), 0644)
 	if err != nil { panic(err) }
 
+	// FLAG_BASIC=-Wall -Wextra -Werror
+	// FLAG_UB=-Wpedantic -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
+	// FLAG_STRICT=-Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-align \
+	// -Wwrite-strings -Wswitch-enum -Wunreachable-code \
+	// -Wmissing-prototypes -Wdouble-promotion -Wformat=2
+
+	// FLAGS=-g ${FLAG_BASIC} ${FLAG_UB} ${FLAG_STRICT}
+
+	args := []string{
+		"./out/main.c",
+		"-g",
+
+		// Flags
+		"-Wall", "-Wextra", "-Werror",
+		"-Wpedantic", "-fsanitize=undefined", "-fsanitize=address", "-fno-omit-frame-pointer",
+		"-Wshadow", "-Wstrict-prototypes", "-Wpointer-arith", "-Wcast-align",
+		"-Wwrite-strings", "-Wswitch-enum", "-Wunreachable-code",
+		"-Wmissing-prototypes", "-Wdouble-promotion", "-Wformat=2",
+
+		"-o", "./out/run.bin",
+	}
+
 	// Build command
-	cc := "gcc"
-	err = localCmd(cc, "main.c", "-o", "run.bin")
+	cc := "tcc"
+	err = localCmd("./", cc, args...)
 	if err != nil { panic(err) }
 }

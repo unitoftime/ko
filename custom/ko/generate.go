@@ -130,6 +130,12 @@ func (buf *genBuf) Generate(result ParseResult) {
 	for _, node := range result.typeList {
 		buf.PrintForwardDecl(node)
 		buf.Add(";").Line()
+
+		structNode, isStruct := node.(*StructNode)
+		if isStruct {
+			buf.printEqualityPrototype(structNode.Type().name)
+			buf.Add(";").Line()
+		}
 	}
 
 	// Forward Declare all functions
@@ -200,7 +206,6 @@ func (buf *genBuf) PrintCompleteType(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
 		buf.PrintStructNode(t)
-		buf.Add(";").Line()
 	default:
 		panic(fmt.Sprintf("PrintForwardDecl: Unknown NodeType: %T", t))
 	}
@@ -345,7 +350,7 @@ func (buf *genBuf) Print(n Node) {
 		if t.left.Type().isStruct || t.right.Type().isStruct {
 			ty := t.left.Type()
 			buf.Add("(")
-			buf.Add("__ko_" + ty.name +"_equality(")
+			buf.Add(equalityFunctionName(ty.name)).Add("(")
 			buf.Print(t.left)
 			buf.Add(", ")
 			buf.Print(t.right)
@@ -373,9 +378,13 @@ func (buf *genBuf) Print(n Node) {
 	case *IdentExpr:
 		buf.Add(t.tok.str)
 	case *CompLitExpr:
-		buf.Add("(").
-			Add(typeStr(t.ty)).
-			Add(")")
+		if buf.indent > 0 {
+			// Global variables use a different composit lit syntax
+			buf.Add("(").
+				Add(typeStr(t.ty)).
+				Add(")")
+		}
+
 		buf.Add("{ ")
 		buf.PrintArgList(t.args)
 		buf.Add(" }")
@@ -391,14 +400,19 @@ func equalityFunctionName(name string) string {
 	return "__ko_"+name+"_equality"
 }
 
+func (buf *genBuf) printEqualityPrototype(name string)  {
+	buf.Add("bool ").Add(equalityFunctionName(name)).
+		Add("(").
+		Add(name).Add(" a").
+		Add(", ").
+		Add(name).Add(" b").
+		Add(")")
+
+}
 func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 	ty := t.Type()
-	buf.Add("bool ").Add(equalityFunctionName(ty.name)).
-		Add("(").
-		Add(ty.name).Add(" a").
-		Add(", ").
-		Add(ty.name).Add(" b").
-		Add(") {").Line()
+	buf.printEqualityPrototype(ty.name)
+	buf.Add("{").Line()
 	buf.indent++
 
 	// buf.Add("return a == b;").Line()
