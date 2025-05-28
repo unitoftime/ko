@@ -3,12 +3,15 @@ package main
 func main() {
 	TestHelloWorld()
 	TestVariablesAndArithmetic()
+	TestUnaryOperators()
 	TestFib()
 	TestStructs()
 	TestForLoop()
 	TestIfStatement()
 	TestGlobalVariable()
 	TestGlobalVariableStruct()
+	TestCallWithStruct()
+	TestScopeNesting()
 
 	// runBenchmark()
 
@@ -18,7 +21,7 @@ func main() {
 }
 
 func TestHelloWorld() {
-	printf("Hello World")
+	printf("Hello World\n")
 }
 
 func TestVariablesAndArithmetic() {
@@ -26,6 +29,30 @@ func TestVariablesAndArithmetic() {
 	var b = 20
 	var c = a * b + 5
 	Assert(c == 205)
+
+	a++
+	Assert(a == 10 + 1)
+
+	a++
+	a++
+	Assert(a == 10 + 1 + 2)
+
+	a++
+	a++
+	a++
+	Assert(a == 10 + 1 + 2 + 3)
+	a++
+}
+
+func TestUnaryOperators() {
+	var x = 5
+	Assert(x == 5)
+	Assert(-x == -5)
+	Assert(!false)
+	Assert(!!true)
+	Assert(!!!false)
+	Assert(!(!(!(!true))))
+	Assert(!(-(x) == (5)))
 }
 
 func fib(n u64) u64 {
@@ -95,9 +122,25 @@ func TestCallWithStruct() {
 
 	var p3 = reverse(p1)
 	var p4 = reverse(p3)
-	Assert(p1 == p3)
+	Assert(p2 == p3)
 	Assert(p1 != p2)
-	Assert(p2 == p4)
+	Assert(p1 == p4)
+}
+
+func TestScopeNesting() {
+	var a = 5;
+
+	{
+		var a = 10;
+		Assert(a == 10)
+		{
+			var a = 15;
+			Assert(a == 15)
+		}
+		Assert(a == 10)
+	}
+
+	Assert(a == 5)
 }
 
 // func backtraceTest(n int) int {
@@ -108,17 +151,17 @@ func TestCallWithStruct() {
 // 	return n + backtraceTest(n - 1)
 // }
 
-// // TODO: I think when I do closures I may want to just manually handle them, rather than rely on gcc
-// // // Note: I think this only works in gcc and isn't standard c
-// // func closure() {
-// // 	var i = 0
-// // 	func count() {
-// // 		i = i + 1
-// // 	}
+// TODO: I think when I do closures I may want to just manually handle them, rather than rely on gcc
+// // Note: I think this only works in gcc and isn't standard c
+// func closure() {
+// 	var i = 0
+// 	func count() {
+// 		i = i + 1
+// 	}
 
-// // 	count()
-// // 	count()
-// // 	count()
-// // 	printf("Closure Count: %d", i)
-// // }
+// 	count()
+// 	count()
+// 	count()
+// 	printf("Closure Count: %d", i)
+// }
 

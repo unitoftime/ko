@@ -67,28 +67,32 @@ typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 #line 3 "./tests/test.k"
 int main ();
-#line 20 "./tests/test.k"
+#line 23 "./tests/test.k"
 void TestHelloWorld ();
-#line 24 "./tests/test.k"
+#line 27 "./tests/test.k"
 void TestVariablesAndArithmetic ();
-#line 31 "./tests/test.k"
+#line 47 "./tests/test.k"
+void TestUnaryOperators ();
+#line 58 "./tests/test.k"
 uint64_t fib (uint64_t n );
-#line 38 "./tests/test.k"
+#line 65 "./tests/test.k"
 void TestFib ();
-#line 49 "./tests/test.k"
-void TestStructs ();
-#line 56 "./tests/test.k"
-void TestForLoop ();
-#line 67 "./tests/test.k"
-void TestIfStatement ();
 #line 76 "./tests/test.k"
+void TestStructs ();
+#line 83 "./tests/test.k"
+void TestForLoop ();
+#line 94 "./tests/test.k"
+void TestIfStatement ();
+#line 103 "./tests/test.k"
 void TestGlobalVariable ();
-#line 82 "./tests/test.k"
+#line 109 "./tests/test.k"
 void TestGlobalVariableStruct ();
-#line 86 "./tests/test.k"
+#line 113 "./tests/test.k"
 Point reverse (Point val );
-#line 92 "./tests/test.k"
+#line 119 "./tests/test.k"
 void TestCallWithStruct ();
+#line 130 "./tests/test.k"
+void TestScopeNesting ();
 struct Point {
 	int X;
 	int Y;
@@ -96,58 +100,82 @@ struct Point {
 bool __ko_Point_equality(Point a, Point b){
 	return ((a.X == b.X) && (a.Y == b.Y));
 }
-#line 75 "./tests/test.k"
+#line 102 "./tests/test.k"
 int globA = 5;
-#line 81 "./tests/test.k"
+#line 108 "./tests/test.k"
 Point globPoint = { 2, 3 };
 // package main
 #line 3 "./tests/test.k"
 int main () {
 	TestHelloWorld();
 	TestVariablesAndArithmetic();
+	TestUnaryOperators();
 	TestFib();
 	TestStructs();
 	TestForLoop();
 	TestIfStatement();
 	TestGlobalVariable();
 	TestGlobalVariableStruct();
+	TestCallWithStruct();
+	TestScopeNesting();
 	;
 	;
 	;
 return __mainRet__;
 }
-#line 20 "./tests/test.k"
+#line 23 "./tests/test.k"
 void TestHelloWorld () {
-	printf("Hello World");
+	printf("Hello World\n");
 }
-#line 24 "./tests/test.k"
+#line 27 "./tests/test.k"
 void TestVariablesAndArithmetic () {
 	int a = 10;
 	int b = 20;
 	int c = ((a * b) + 5);
 	Assert((c == 205));
+	(a++);
+	Assert((a == (10 + 1)));
+	(a++);
+	(a++);
+	Assert((a == ((10 + 1) + 2)));
+	(a++);
+	(a++);
+	(a++);
+	Assert((a == (((10 + 1) + 2) + 3)));
+	(a++);
 }
-#line 31 "./tests/test.k"
+#line 47 "./tests/test.k"
+void TestUnaryOperators () {
+	int x = 5;
+	Assert((x == 5));
+	Assert(((-x) == (-5)));
+	Assert((!false));
+	Assert((!(!true)));
+	Assert((!(!(!false))));
+	Assert((!((!((!((!true))))))));
+	Assert((!(((-(x)) == (5)))));
+}
+#line 58 "./tests/test.k"
 uint64_t fib (uint64_t n ) {
 	if ((n <= 1)) {
 		return (n);
 	};
 	return ((fib((n - 2)) + fib((n - 1))));
 }
-#line 38 "./tests/test.k"
+#line 65 "./tests/test.k"
 void TestFib () {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
-#line 49 "./tests/test.k"
+#line 76 "./tests/test.k"
 void TestStructs () {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
 	Assert((p1.X == p2.Y));
 	Assert((p1.Y == p2.X));
 }
-#line 56 "./tests/test.k"
+#line 83 "./tests/test.k"
 void TestForLoop () {
 	int num = 20;
 	int count = 0;
@@ -158,7 +186,7 @@ void TestForLoop () {
 	};
 	Assert((count == num));
 }
-#line 67 "./tests/test.k"
+#line 94 "./tests/test.k"
 void TestIfStatement () {
 	if ((5 < 10)) {
 		Assert((1 == 1));
@@ -166,29 +194,45 @@ void TestIfStatement () {
 		Assert((1 == 2));
 	};
 }
-#line 76 "./tests/test.k"
+#line 103 "./tests/test.k"
 void TestGlobalVariable () {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
-#line 82 "./tests/test.k"
+#line 109 "./tests/test.k"
 void TestGlobalVariableStruct () {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }
-#line 86 "./tests/test.k"
+#line 113 "./tests/test.k"
 Point reverse (Point val ) {
 	int tmp = val.X;
 	val.X = val.Y;
 	val.Y = tmp;
 	return (val);
 }
-#line 92 "./tests/test.k"
+#line 119 "./tests/test.k"
 void TestCallWithStruct () {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ 2, 1 };
 	Point p3 = reverse(p1);
 	Point p4 = reverse(p3);
-	Assert((__ko_Point_equality(p1, p3) == true));
+	Assert((__ko_Point_equality(p2, p3) == true));
 	Assert((__ko_Point_equality(p1, p2) != true));
-	Assert((__ko_Point_equality(p2, p4) == true));
+	Assert((__ko_Point_equality(p1, p4) == true));
+}
+#line 130 "./tests/test.k"
+void TestScopeNesting () {
+	int a = 5;
+	{
+		int a = 10;
+		Assert((a == 10));
+		{
+			int a = 15;
+			Assert((a == 15));
+		}
+		;
+		Assert((a == 10));
+	}
+	;
+	Assert((a == 5));
 }

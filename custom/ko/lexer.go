@@ -22,8 +22,6 @@ const (
 	SEMI // ;
 	COMMA // ;
 	DOT // .
-	ADD // +
-	SUB // -
 	MUL // *
 	DIV // /
 	LPAREN // (
@@ -34,6 +32,11 @@ const (
 	RBRACK // ]
 
 	// One or two character
+	ADD // +
+	INC // +
+	SUB // -
+	DEC // --
+
 	BANG // !
 	BANGEQUAL // !=
 	EQUAL // =
@@ -62,6 +65,8 @@ const (
 	IF
 	ELSE
 	FOR
+	TRUE
+	FALSE
   // AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
   // PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
 )
@@ -74,8 +79,6 @@ var tokens = []string{
 	SEMI:    ";",
 	COMMA:    ",",
 	DOT: ".",
-	ADD: "ADD",
-	SUB: "SUB",
 	MUL: "MUL",
 	DIV: "DIV",
 	LPAREN: "(",
@@ -86,6 +89,11 @@ var tokens = []string{
 	RBRACK: "]",
 
 	// One or two character
+	ADD: "ADD",
+	INC: "INC",
+	SUB: "SUB",
+	DEC: "DEC",
+
 	BANG: "!",
 	BANGEQUAL: "!=",
 	EQUAL: "=",
@@ -113,6 +121,8 @@ var tokens = []string{
 	IF: "if",
 	ELSE: "else",
 	FOR: "for",
+	TRUE: "true",
+	FALSE: "false",
 }
 var keywordList = map[string]TokenType{
 	tokens[PACKAGE]: PACKAGE,
@@ -124,6 +134,8 @@ var keywordList = map[string]TokenType{
 	tokens[IF]: IF,
 	tokens[ELSE]: ELSE,
 	tokens[FOR]: FOR,
+	tokens[TRUE]: TRUE,
+	tokens[FALSE]: FALSE,
 }
 
 
@@ -173,7 +185,7 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		switch r {
 		case '\n':
 			// Decide if we want to add semicolon
-			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == INT || l.lastToken == FLOAT {
+			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == INT || l.lastToken == FLOAT || l.lastToken == INC || l.lastToken == DEC {
 				l.lastToken = SEMI
 				l.resetPosition()
 				return l.pos, SEMI, ";"
@@ -188,12 +200,6 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		case '.':
 			l.lastToken = DOT
 			return l.pos, DOT, ","
-		case '+':
-			l.lastToken = ADD
-			return l.pos, ADD, "+"
-		case '-':
-			l.lastToken = SUB
-			return l.pos, SUB, "-"
 		case '*':
 			l.lastToken = MUL
 			return l.pos, MUL, "*"
@@ -219,6 +225,22 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 			//--------------------------------------------------------------------------------
 			// - One or two tokens
 			//--------------------------------------------------------------------------------
+		case '+':
+			if l.match('+') {
+				l.lastToken = INC
+				return l.pos, INC, "++"
+			}
+
+			l.lastToken = ADD
+			return l.pos, ADD, "+"
+		case '-':
+			if l.match('-') {
+				l.lastToken = DEC
+				return l.pos, DEC, "--"
+			}
+
+			l.lastToken = SUB
+			return l.pos, SUB, "-"
 		case '!':
 			if l.match('=') {
 				l.lastToken = BANGEQUAL

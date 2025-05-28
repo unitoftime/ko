@@ -59,6 +59,16 @@ func (n *StructNode) Type() *Type {
 	return n.ty
 }
 
+type ScopeNode struct {
+	Scope *CurlyScope
+}
+func (n *ScopeNode) Pos() Position {
+	return Position{}
+}
+func (n *ScopeNode) Type() *Type {
+	return UnknownType
+}
+
 type CurlyScope struct {
 	nodes []Node
 }
@@ -161,13 +171,14 @@ func (n *ForStmt) Type() *Type {
 
 type Stmt struct {
 	node Node
-	ty *Type
+	// ty *Type
 }
 func (n *Stmt) Pos() Position {
 	return Position{}
 }
 func (n *Stmt) Type() *Type {
-	return n.ty
+	return UnknownType
+	// return n.ty
 }
 
 type CallExpr struct {
@@ -255,16 +266,29 @@ func (n *BinaryExpr) Type() *Type {
 	return n.ty
 }
 
+type PostfixStmt struct {
+	left Node
+	op Token
+	// ty *Type
+}
+func (n *PostfixStmt) Pos() Position {
+	return Position{}
+}
+func (n *PostfixStmt) Type() *Type {
+	return UnknownType
+}
+
+// Note: This is now more of a prefix?
 type UnaryExpr struct {
 	right Node
 	op Token
+	ty *Type
 }
 func (n *UnaryExpr) Pos() Position {
 	return Position{}
 }
 func (n *UnaryExpr) Type() *Type {
-	panic("AAAAA")
-	return UnknownType // TODO: based on operator and node
+	return n.ty
 }
 
 type LitExpr struct {
@@ -323,6 +347,9 @@ func (t *Tokens) Len() int {
 }
 func (t *Tokens) Peek() Token {
 	return t.list[0]
+}
+func (t *Tokens) PeekNext() Token {
+	return t.list[1]
 }
 func (t *Tokens) Next() Token {
 	t.prev = t.list[len(t.list)-1]
@@ -395,6 +422,17 @@ func (p *Parser) PrintNext() {
 	fmt.Println(p.tokens.Peek())
 }
 
+func (p *Parser) Next() Token {
+	return p.tokens.Next()
+}
+
+func (p *Parser) Peek() Token {
+	return p.tokens.Peek()
+}
+func (p *Parser) PeekNext() Token {
+	return p.tokens.PeekNext()
+}
+
 func (p *Parser) Match(tokType TokenType) bool {
 	return p.tokens.Match(tokType)
 }
@@ -420,7 +458,7 @@ func (p *Parser) ParseTil(stopToken TokenType, globalScope bool) []Node {
 			if next.token != SEMI {
 				panic(parseError(stopToken, next))
 			} else {
-				fmt.Println("-------------------------semi")
+				fmt.Println("-------------------------semi", p.tokens.Prev())
 			}
 		}
 	}
@@ -459,7 +497,8 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		return p.forStatement()
 	case IDENT:
 		return p.parseStatement()
-
+	case LBRACE:
+		return &ScopeNode{p.ParseCurlyScope()}
 	case LINECOMMENT:
 		next := tokens.Next() // Discard
 		return &CommentNode{next.str}
@@ -555,7 +594,7 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 		}
 	}
 
-	body := p.ParseCurlyScope(tokens)
+	body := p.ParseCurlyScope()
 	f := FuncNode{
 		pos: funcToken.pos,
 		name: next.str,
@@ -571,7 +610,8 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 	return &f
 }
 
-func (p *Parser) ParseCurlyScope(tokens *Tokens) Node {
+func (p *Parser) ParseCurlyScope() *CurlyScope {
+	tokens := p.tokens
 	next := tokens.Next()
 	if next.token != LBRACE {
 		panic(parseError(LBRACE, next))
@@ -671,12 +711,21 @@ func (p *Parser) ParseTypedArg(tokens *Tokens) *Arg {
 // }
 
 func (p *Parser) parseStatement() Node {
+	switch p.Peek().token {
+	case IDENT:
+		switch p.PeekNext().token {
+		case INC: fallthrough
+		case DEC:
+			return p.postfixStatement()
+		}
+	}
+
 	// switch tokens.Peek().token {
 	// case LPAREN:
 	// // 	return Stmt{p.ParseFuncCall(tokens)}
 	// }
 
-	return &Stmt{p.ParseExpression(), UnknownType}
+	return &Stmt{p.ParseExpression()}
 }
 
 func (p *Parser) varDecl(globalScope bool) *VarStmt {
@@ -698,17 +747,26 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	return stmt
 }
 
+func (p *Parser) postfixStatement() Node {
+	tok := p.Consume(IDENT)
+	op := p.Next()
+	ident := &IdentExpr{tok, UnknownType}
+	p.Consume(SEMI)
+	return &PostfixStmt{ident, op}
+}
+
+
 func (p *Parser) ifStatement(tokens *Tokens) Node {
 	p.blockCompLit = true
 	defer func() { p.blockCompLit = false }()
-	cond := p.ParseExpression()
+	cond := p.parseStatement()
 
-	thenScope := p.ParseCurlyScope(tokens)
+	thenScope := p.ParseCurlyScope()
 
 	var elseScope Node
 	if tokens.Peek().token == ELSE {
 		tokens.Next()
-		elseScope = p.ParseCurlyScope(tokens)
+		elseScope = p.ParseCurlyScope()
 	}
 
 	return &IfStmt{cond, thenScope, elseScope}
@@ -742,10 +800,10 @@ func (p *Parser) forStatement() Node {
 	if p.Match(SEMI) {
 		inc = nil
 	} else {
-		inc = p.ParseExpression()
+		inc = p.parseStatement()
 	}
 
-	body := p.ParseCurlyScope(p.tokens)
+	body := p.ParseCurlyScope()
 
 	return &ForStmt{forTok, init, cond, inc, body}
 
@@ -826,7 +884,7 @@ func (p *Parser) And() Node {
 }
 
 func (p *Parser) Equality(tokens *Tokens) Node {
-	expr := p.ParseExprComparison(tokens)
+	expr := p.Comparison(tokens)
 
 	for {
 		middle := tokens.Peek()
@@ -834,7 +892,7 @@ func (p *Parser) Equality(tokens *Tokens) Node {
 		case BANGEQUAL: fallthrough
 		case EQUALEQUAL:
 			middle = tokens.Next()
-			right := p.ParseExprComparison(tokens)
+			right := p.Comparison(tokens)
 			expr = &BinaryExpr{expr, right, middle, UnknownType}
 		default:
 			return expr
@@ -842,8 +900,8 @@ func (p *Parser) Equality(tokens *Tokens) Node {
 	}
 }
 
-func (p *Parser) ParseExprComparison(tokens *Tokens) Node {
-	expr := p.ParseExprTerm(tokens)
+func (p *Parser) Comparison(tokens *Tokens) Node {
+	expr := p.Term(tokens)
 
 	for {
 		middle := tokens.Peek()
@@ -853,7 +911,7 @@ func (p *Parser) ParseExprComparison(tokens *Tokens) Node {
 		case LESS: fallthrough
 		case LESSEQUAL:
 			middle = tokens.Next()
-			right := p.ParseExprTerm(tokens)
+			right := p.Term(tokens)
 			expr = &BinaryExpr{expr, right, middle, UnknownType}
 		default:
 			return expr
@@ -861,8 +919,8 @@ func (p *Parser) ParseExprComparison(tokens *Tokens) Node {
 	}
 }
 
-func (p *Parser) ParseExprTerm(tokens *Tokens) Node {
-	expr := p.ParseExprFactor(tokens)
+func (p *Parser) Term(tokens *Tokens) Node {
+	expr := p.Factor(tokens)
 
 	for {
 		middle := tokens.Peek()
@@ -870,15 +928,16 @@ func (p *Parser) ParseExprTerm(tokens *Tokens) Node {
 		case SUB: fallthrough
 		case ADD:
 			middle = tokens.Next()
-			right := p.ParseExprFactor(tokens)
+			right := p.Factor(tokens)
 			expr = &BinaryExpr{expr, right, middle, UnknownType}
+
 		default:
 			return expr
 		}
 	}
 }
 
-func (p *Parser) ParseExprFactor(tokens *Tokens) Node {
+func (p *Parser) Factor(tokens *Tokens) Node {
 	expr := p.Unary(tokens)
 
 	for {
@@ -902,14 +961,14 @@ func (p *Parser) Unary(tokens *Tokens) Node {
 	case SUB:
 		op = tokens.Next()
 		right := p.Unary(tokens)
-		return &UnaryExpr{right, op}
+		return &UnaryExpr{right, op, UnknownType}
 	}
 
-	return p.ParseExprCall()
+	return p.Call()
 }
 
 // Handles function calls and struct instantiation calls ie myStruct{...}
-func (p *Parser) ParseExprCall() Node {
+func (p *Parser) Call() Node {
 	expr := p.ParseExprPrimary(p.tokens)
 
 	for {
@@ -971,9 +1030,15 @@ func (p *Parser) FinishCompLit(callee Node) Node {
 func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	op := tokens.Peek()
 	switch op.token {
-	// case FALSE: fallthrough
-	// case TRUE: fallthrough
-	// case NIL: fallthrough
+	// TODO: NIL literal?
+
+	case TRUE:
+		tok := tokens.Next()
+		return &LitExpr{tok, TRUE, BoolLitType}
+	case FALSE:
+		tok := tokens.Next()
+		return &LitExpr{tok, FALSE, BoolLitType}
+
 	case INT:
 		tok := tokens.Next()
 		return &LitExpr{tok, INT, IntLitType}
@@ -987,7 +1052,9 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 		tok := tokens.Next()
 		return &LitExpr{tok, STRING, StringLitType}
 	case LPAREN:
-		expr := &GroupingExpr{p.Equality(tokens), UnknownType}
+		tokens.Consume(LPAREN)
+		// TODO: Shoudl this be Or?
+		expr := &GroupingExpr{p.Equality(p.tokens), UnknownType}
 
 		tokens.Consume(RPAREN)
 		return expr

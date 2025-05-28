@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 // TODO: I think every type needs to just be a nil pointer in every node, and then it gets computed as I walk through the resolve. and has information, like what the underlying type is, and if its comparable, and little bits like that. Obviously things like structs and funcs have that all predeclared, then expressions i kinda just walk through to see what matches what
 // type Type string
 type Type struct {
@@ -97,6 +95,7 @@ var floatLitCast = map[string]bool {
 const IntLitName = "untypedInt"
 const FloatLitName = "untypedFloat"
 const StringLitName = "untypedString"
+const BoolLitName = "untypedBool"
 
 var (
 	UnknownType *Type = nil
@@ -104,6 +103,7 @@ var (
 
 	// These are literal types that can be dynamically resolved to whatever is needed
 	// TODO: UntypedBool,Int,Rune,Float,Complex,String,Nil?
+	BoolLitType *Type = &Type{BoolLitName, true, false}
 	IntLitType *Type = &Type{IntLitName, true, false}
 	FloatLitType *Type = &Type{FloatLitName, true, false}
 	StringLitType *Type = &Type{StringLitName, true, false}
@@ -267,30 +267,30 @@ func typeStr(in *Type) string {
 // 	return str
 // }
 
-func (r *Resolver) isComparable(n Node) bool {
-	// fmt.Printf("isComparable: %T\n", n)
+// func (r *Resolver) isComparable(n Node) bool {
+// 	// fmt.Printf("isComparable: %T\n", n)
 
-	switch t := n.(type) {
-	case *StructNode:
-		// TODO: Check every field to make sure it is also comparable
-		return true
-	case *IdentExpr:
-		nodeDef, ok := r.CheckScope(t.tok.str)
-		if !ok {
-			printErr(t.tok, fmt.Sprintf("Unable to find identifier: %s", t.tok.str))
-			return false
-		}
-		return r.isComparable(nodeDef)
-	case *CallExpr:
-		// TODO: Check the type that whatever it points to returns
-		return true
-	case *GetExpr:
-		// TODO: Check the type that whatever it points to has at that field
-		return true
-	case *VarStmt:
-		return true
-	case *LitExpr:
-		return true // Always comparable
-	}
-	return false
-}
+// 	switch t := n.(type) {
+// 	case *StructNode:
+// 		// TODO: Check every field to make sure it is also comparable
+// 		return true
+// 	case *IdentExpr:
+// 		nodeDef, ok := r.CheckScope(t.tok.str)
+// 		if !ok {
+// 			printErr(t.tok, fmt.Sprintf("Unable to find identifier: %s", t.tok.str))
+// 			return false
+// 		}
+// 		return r.isComparable(nodeDef)
+// 	case *CallExpr:
+// 		// TODO: Check the type that whatever it points to returns
+// 		return true
+// 	case *GetExpr:
+// 		// TODO: Check the type that whatever it points to has at that field
+// 		return true
+// 	case *VarStmt:
+// 		return true
+// 	case *LitExpr:
+// 		return true // Always comparable
+// 	}
+// 	return false
+// }

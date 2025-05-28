@@ -350,8 +350,8 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return t.ty
 	case *Stmt:
 		fmt.Println("Stmt:", t)
-		t.ty = r.resolveLocal(t.node)
-		return t.ty
+		r.resolveLocal(t.node)
+		return UnknownType
 	case *ForStmt:
 		fmt.Println("ForStmt:", t)
 		// TODO: Invalid unless in function
@@ -378,6 +378,14 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 			r.resolveLocal(t.elseScope)
 			r.PopScope()
 		}
+
+	case *ScopeNode:
+		fmt.Println("ScopeNode")
+		r.PushScope()
+		ty := r.resolveLocal(t.Scope)
+		r.PushScope()
+
+		return ty
 
 	case *CurlyScope:
 		fmt.Println("CurlyScope")
@@ -507,9 +515,15 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		t.ty = resultType
 		return resultType
 
+	case *PostfixStmt:
+		// TODO: Currently you only support ++ and -- which both returh r-values and cant be used for other stuff
+		r.resolveLocal(t.left)
+		return UnknownType
 	case *UnaryExpr:
 		fmt.Println("UnaryExpr:", t)
-		// TODO: Impl
+		// TODO: right now we have no casting unary types, but in the futures those would change the type. so currently the unary type is always just the type of the right node
+		t.ty = r.resolveLocal(t.right)
+		return t.ty
 
 	case *IdentExpr:
 		fmt.Println("IdentExpr:", t)
@@ -534,6 +548,9 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		fmt.Println("CompLitExpr.Typed:", t)
 		return t.ty
 
+	case *GroupingExpr:
+		t.ty = r.resolveLocal(t.Node)
+		return t.ty
 	case *LitExpr:
 		fmt.Println("LitExpr:", t)
 		return t.Type()
@@ -569,7 +586,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 	// Comparable
 	case BANGEQUAL: fallthrough
 	case EQUALEQUAL:
-		if !r.isComparable(t.left) {
+		if !commonType.comparable {
 			printErr(t.op, fmt.Sprintf("Tried to compare incomparable type: %T", t.left))
 			panic("Tried to compare incomparable types")
 			return UnknownType, false
