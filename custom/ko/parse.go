@@ -16,11 +16,15 @@ func parseError(expected TokenType, got Token) error {
 
 type Node interface {
 	// WalkGraphviz(string, *bytes.Buffer)
+	Pos() Position
 }
 
 type FileNode struct {
 	filename string
 	nodes []Node
+}
+func (n *FileNode) Pos() Position {
+	return Position{}
 }
 
 type FuncNode struct {
@@ -30,45 +34,80 @@ type FuncNode struct {
 	returns *ArgNode
 	body Node
 }
+func (n *FuncNode) Pos() Position {
+	return Position{}
+}
 type StructNode struct {
 	global bool
 	ident Token
-	fields []Arg
+	fields []*Arg
+}
+func (n *StructNode) Pos() Position {
+	return Position{}
 }
 
 type CurlyScope struct {
 	nodes []Node
 }
+func (n *CurlyScope) Pos() Position {
+	return Position{}
+}
 
 type PackageNode struct {
 	name string
 }
+func (n *PackageNode) Pos() Position {
+	return Position{}
+}
+
 type CommentNode struct {
 	line string
+}
+func (n *CommentNode) Pos() Position {
+	return Position{}
 }
 
 type ReturnNode struct {
 	expr Node
+}
+func (n *ReturnNode) Pos() Position {
+	return Position{}
 }
 
 type Arg struct {
 	name Token
 	kind Token
 }
+func (n *Arg) Pos() Position {
+	return Position{}
+}
+func (a *Arg) Type() Type {
+	return Type(a.kind.str)
+}
+
 type ArgNode struct {
-	args []Arg
+	args []*Arg
+}
+func (n *ArgNode) Pos() Position {
+	return Position{}
 }
 
 type VarStmt struct {
 	name Token
 	global bool
 	initExpr Node
-	calcTy Type
+	ty Type
+}
+func (n *VarStmt) Pos() Position {
+	return Position{}
 }
 type IfStmt struct {
 	cond Node
 	thenScope Node
 	elseScope Node
+}
+func (n *IfStmt) Pos() Position {
+	return Position{}
 }
 
 type ForStmt struct {
@@ -76,10 +115,16 @@ type ForStmt struct {
 	init, cond, inc Node
 	body Node
 }
+func (n *ForStmt) Pos() Position {
+	return Position{}
+}
 
 
 type Stmt struct {
 	node Node
+}
+func (n *Stmt) Pos() Position {
+	return Position{}
 }
 
 type CallExpr struct {
@@ -87,21 +132,34 @@ type CallExpr struct {
 	rparen Token // Just for position data I guess?
 	args []Node
 }
+func (n *CallExpr) Pos() Position {
+	return Position{}
+}
 
 type CompLitExpr struct {
 	callee Node
 	args []Node
 	ty Type
 }
+func (n *CompLitExpr) Pos() Position {
+	return Position{}
+}
 
 type GetExpr struct {
 	obj Node
 	name Token
 }
+func (n *GetExpr) Pos() Position {
+	return Position{}
+}
+
 type SetExpr struct {
 	obj Node
 	name Token
 	value Node
+}
+func (n *SetExpr) Pos() Position {
+	return Position{}
 }
 
 type LogicalExpr struct {
@@ -109,10 +167,16 @@ type LogicalExpr struct {
 	op Token
 	right Node
 }
+func (n *LogicalExpr) Pos() Position {
+	return Position{}
+}
 
 type AssignExpr struct {
 	name Token
 	value Node
+}
+func (n *AssignExpr) Pos() Position {
+	return Position{}
 }
 
 type BinaryExpr struct {
@@ -120,22 +184,38 @@ type BinaryExpr struct {
 	op Token
 	ty Type
 }
+func (n *BinaryExpr) Pos() Position {
+	return Position{}
+}
 
 type UnaryExpr struct {
 	right Node
 	op Token
+}
+func (n *UnaryExpr) Pos() Position {
+	return Position{}
 }
 
 type LitExpr struct {
 	tok Token
 	kind TokenType
 }
-type VarExpr struct {
+func (n *LitExpr) Pos() Position {
+	return Position{}
+}
+type IdentExpr struct {
 	tok Token
+	ty Type
+}
+func (n *IdentExpr) Pos() Position {
+	return Position{}
 }
 
 type GroupingExpr struct {
 	Node
+}
+func (n *GroupingExpr) Pos() Position {
+	return Position{}
 }
 
 // --------------------------------------------------------------------------------
@@ -264,7 +344,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		next := tokens.Next()
 		tokens.Consume(SEMI)
 
-		return PackageNode{
+		return &PackageNode{
 			name: next.str,
 		}
 	case TYPE:
@@ -289,7 +369,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 
 	case LINECOMMENT:
 		next := tokens.Next() // Discard
-		return CommentNode{next.str}
+		return &CommentNode{next.str}
 	case SEMI:
 		// tokens.Next() // Discard
 		return nil
@@ -324,7 +404,7 @@ func (p *Parser) TypeNode(globalScope bool) Node {
 
 	if p.Match(STRUCT) {
 		p.Consume(LBRACE)
-		fields := make([]Arg, 0)
+		fields := make([]*Arg, 0)
 		for {
 			if p.Match(RBRACE) {
 				break
@@ -333,7 +413,7 @@ func (p *Parser) TypeNode(globalScope bool) Node {
 			field := p.Consume(IDENT)
 			kind := p.Consume(IDENT)
 			p.Consume(SEMI)
-			fields = append(fields, Arg{field, kind})
+			fields = append(fields, &Arg{field, kind})
 		}
 
 		s := &StructNode{
@@ -373,8 +453,8 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 			returns = p.ParseArgNode()
 		case IDENT:
 			tokens.Next()
-			args := ArgNode{make([]Arg, 0)}
-			args.args = append(args.args, Arg{
+			args := ArgNode{make([]*Arg, 0)}
+			args.args = append(args.args, &Arg{
 				name: Token{}, // TODO
 				kind: next,
 			})
@@ -411,10 +491,10 @@ func (p *Parser) ParseCurlyScope(tokens *Tokens) Node {
 
 
 func (p *Parser) ParseReturnNode(tokens *Tokens) Node {
-	r := ReturnNode{
+	r := &ReturnNode{
 		expr: p.ParseExpression(),
 	}
-	return &r
+	return r
 }
 
 func (p *Parser) ParseArgNode() *ArgNode {
@@ -425,7 +505,7 @@ func (p *Parser) ParseArgNode() *ArgNode {
 		panic(parseError(LPAREN, next))
 	}
 
-	args := ArgNode{make([]Arg, 0)}
+	args := &ArgNode{make([]*Arg, 0)}
 	for {
 		if tokens.Peek().token == RPAREN { break }
 
@@ -439,10 +519,10 @@ func (p *Parser) ParseArgNode() *ArgNode {
 
 	tokens.Next() // Drop the RPAREN
 
-	return &args
+	return args
 }
 
-func (p *Parser) ParseTypedArg(tokens *Tokens) Arg {
+func (p *Parser) ParseTypedArg(tokens *Tokens) *Arg {
 	name := tokens.Next()
 	if name.token != IDENT {
 		panic(fmt.Sprintf("MUST BE IDENT: %s", name.str))
@@ -453,7 +533,7 @@ func (p *Parser) ParseTypedArg(tokens *Tokens) Arg {
 		panic(fmt.Sprintf("MUST BE IDENT: %s", kind.str))
 	}
 
-	return Arg{name, kind}
+	return &Arg{name, kind}
 }
 
 // func (p *Parser) ParseExprNode(tokens *Tokens) Node {
@@ -503,7 +583,7 @@ func (p *Parser) parseStatement() Node {
 	// // 	return Stmt{p.ParseFuncCall(tokens)}
 	// }
 
-	return Stmt{p.ParseExpression()}
+	return &Stmt{p.ParseExpression()}
 }
 
 func (p *Parser) varDecl(globalScope bool) *VarStmt {
@@ -538,7 +618,7 @@ func (p *Parser) ifStatement(tokens *Tokens) Node {
 		elseScope = p.ParseCurlyScope(tokens)
 	}
 
-	return IfStmt{cond, thenScope, elseScope}
+	return &IfStmt{cond, thenScope, elseScope}
 }
 
 func (p *Parser) forStatement() Node {
@@ -574,7 +654,7 @@ func (p *Parser) forStatement() Node {
 
 	body := p.ParseCurlyScope(p.tokens)
 
-	return ForStmt{forTok, init, cond, inc, body}
+	return &ForStmt{forTok, init, cond, inc, body}
 
 }
 
@@ -593,15 +673,15 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 		tokens.Next()
 		value := p.Assignment(tokens)
 
-		varExp, validTarget := expr.(VarExpr)
+		varExp, validTarget := expr.(*IdentExpr)
 		if validTarget {
 			name := varExp.tok
-			return AssignExpr{name, value}
+			return &AssignExpr{name, value}
 		}
-		getExp, validTarget := expr.(GetExpr)
+		getExp, validTarget := expr.(*GetExpr)
 		if validTarget {
 			name := getExp.name
-			return SetExpr{getExp.obj, name, value}
+			return &SetExpr{getExp.obj, name, value}
 		}
 
 
@@ -619,10 +699,10 @@ func (p *Parser) CompLit() Node {
 		tokens.Next()
 		value := p.CompLit()
 
-		varExp, validTarget := expr.(VarExpr)
+		varExp, validTarget := expr.(*IdentExpr)
 		if validTarget {
 			name := varExp.tok
-			return AssignExpr{name, value}
+			return &AssignExpr{name, value}
 		}
 
 		panic("INVALID ASSIGNMENT TARGET")
@@ -637,7 +717,7 @@ func (p *Parser) Or() Node {
 		op := p.tokens.Prev()
 		right := p.And()
 
-		expr = LogicalExpr{expr, op, right}
+		expr = &LogicalExpr{expr, op, right}
 	}
 	return expr
 }
@@ -647,7 +727,7 @@ func (p *Parser) And() Node {
 	for p.tokens.Match(AND) {
 		op := p.tokens.Prev()
 		right := p.Equality(p.tokens)
-		expr = LogicalExpr{expr, op, right}
+		expr = &LogicalExpr{expr, op, right}
 	}
 	return expr
 }
@@ -729,7 +809,7 @@ func (p *Parser) Unary(tokens *Tokens) Node {
 	case SUB:
 		op = tokens.Next()
 		right := p.Unary(tokens)
-		return UnaryExpr{right, op}
+		return &UnaryExpr{right, op}
 	}
 
 	return p.ParseExprCall()
@@ -746,7 +826,7 @@ func (p *Parser) ParseExprCall() Node {
 			expr = p.FinishCompLit(expr)
 		} else if  p.Match(DOT) {
 			name := p.Consume(IDENT)
-			expr = GetExpr{expr, name}
+			expr = &GetExpr{expr, name}
 		} else {
 			break
 		}
@@ -757,7 +837,7 @@ func (p *Parser) ParseExprCall() Node {
 
 func (p *Parser) FinishCall(callee Node) Node {
 	if p.Match(RPAREN) {
-		return CallExpr{callee, p.tokens.Prev(), nil}
+		return &CallExpr{callee, p.tokens.Prev(), nil}
 	}
 
 	args := make([]Node, 0)
@@ -772,7 +852,7 @@ func (p *Parser) FinishCall(callee Node) Node {
 		}
 	}
 	tok := p.Consume(RPAREN)
-	return CallExpr{callee, tok, args}
+	return &CallExpr{callee, tok, args}
 }
 
 func (p *Parser) FinishCompLit(callee Node) Node {
@@ -803,18 +883,18 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	// case NIL: fallthrough
 	case INT:
 		tok := tokens.Next()
-		return LitExpr{tok, INT}
+		return &LitExpr{tok, INT}
 	case FLOAT:
 		tok := tokens.Next()
-		return LitExpr{tok, FLOAT}
+		return &LitExpr{tok, FLOAT}
 	case IDENT:
 		tok := tokens.Next()
-		return VarExpr{tok}
+		return &IdentExpr{tok, UnknownType}
 	case STRING:
 		tok := tokens.Next()
-		return LitExpr{tok, STRING}
+		return &LitExpr{tok, STRING}
 	case LPAREN:
-		expr := GroupingExpr{p.Equality(tokens)}
+		expr := &GroupingExpr{p.Equality(tokens)}
 
 		tokens.Consume(RPAREN)
 		return expr

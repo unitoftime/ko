@@ -18,3 +18,9 @@ tcc: build
 
 # echo 'int main() { return 42; }' | tcc -o myprog -
 # echo 'int main() { return 0; }' | gcc -x c -o myprog -
+
+run: rebuild-ko
+	ko run ./tests/test.k
+
+rebuild-ko:
+	go install .

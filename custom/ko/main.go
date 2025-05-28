@@ -92,11 +92,12 @@ func compile(inputFile string) {
 	err = os.MkdirAll(BuildDirectory, 0700)
 	if err != nil { panic(err) }
 
-	fmt.Println(buf.String())
+	// fmt.Println(buf.String())
 	err = os.WriteFile(BuildDirectory + "main.c", buf.buf.Bytes(), 0644)
 	if err != nil { panic(err) }
 
 	// Build command
-	cc := "tcc"
-	localCmd(cc, "main.c", "-o", "run.bin")
+	cc := "gcc"
+	err = localCmd(cc, "main.c", "-o", "run.bin")
+	if err != nil { panic(err) }
 }

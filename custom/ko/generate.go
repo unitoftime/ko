@@ -3,20 +3,22 @@ package main
 import (
 	"bytes"
 	"fmt"
+
+	_ "embed"
 )
 
 func WalkNode(n Node) {
 	switch t := n.(type) {
-	case PackageNode:
+	case *PackageNode:
 		fmt.Println("PackageNode:", t.name)
-	case CommentNode:
+	case *CommentNode:
 		fmt.Println("CommentNode:")
 	case *FileNode:
 		fmt.Println("FileNode:", t.filename)
 		for _, nn := range t.nodes {
 			WalkNode(nn)
 		}
-	case Stmt:
+	case *Stmt:
 		fmt.Println(t.node)
 	case *FuncNode:
 		fmt.Println("FuncNode:", t.name)
@@ -44,7 +46,7 @@ func WalkNode(n Node) {
 		fmt.Println("Binary", t.op)
 		WalkNode(t.left)
 		WalkNode(t.right)
-	case LitExpr:
+	case *LitExpr:
 		fmt.Println("Lit:", t.tok)
 	default:
 		fmt.Sprintf("Unknown NodeType: %T", t)
@@ -98,16 +100,26 @@ func returnArgsToString(node Node) string {
 	if len(argNode.args) != 1 {
 		panic("only supporting single return types")
 	}
-	return argNode.args[0].kind.str
+	return typeStr(argNode.args[0].Type())
 }
+
+//go:embed runtime.h
+var runtimeFile string
+
 
 func (buf *genBuf) Generate(result ParseResult) {
 	// -- Includes --
-	buf.
-		Add("#include <stdio.h>"). // TODO: hack. runtime.h?
-		Line()
-	// buf.Add("#include \"raylib.h\""). // TODO: hack. runtime.h?
-	// Line().Line()
+	// buf.
+	// 	Add("#include <stdio.h>"). // TODO: hack. runtime.h?
+	// 	Line()
+	// 	Add("#include <stdint.h>").// TODO: hack. runtime.h?
+	// 	Line()
+	// // buf.Add("#include \"raylib.h\""). // TODO: hack. runtime.h?
+	// // Line().Line()
+
+	// -- Runtime --
+	buf.Add(runtimeFile).Line()
+
 
 	// -- Forward declarations --
 	buf.Add("int __mainRet__ = 0;").Line()
@@ -142,16 +154,16 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 func (buf *genBuf) PrintFuncDef(t *FuncNode) {
 	isMain := t.name == "main"
-	retArgs := "int"
+	retArgs := "int" // Note: Default main return type
 	if !isMain {
 		retArgs = returnArgsToString(t.returns)
 	}
 	buf.Add(retArgs).
 		Add(" ").
 		Add(t.name).
-		Add(" ( ")
+		Add(" (")
 	buf.Print(t.arguments)
-	buf.Add(" )")
+	buf.Add(")")
 }
 
 func (buf *genBuf) PrintForwardDecl(n Node) {
@@ -162,7 +174,7 @@ func (buf *genBuf) PrintForwardDecl(n Node) {
 			Add(" ").
 			Add(t.ident.str)
 	case *VarStmt:
-		typeStr := "int"
+		typeStr := typeStr(t.ty)
 		buf.
 			Add(typeStr).
 			Add(" ").
@@ -222,10 +234,10 @@ func (buf *genBuf) Print(n Node) {
 		for _, nn := range t.nodes {
 			buf.Print(nn)
 		}
-	case PackageNode:
+	case *PackageNode:
 		buf.Add("// ").Add("package ").Add(t.name).
 			Line()
-	case CommentNode:
+	case *CommentNode:
 	case *StructNode:
 		if !t.global {
 			buf.PrintStructNode(t)
@@ -243,10 +255,10 @@ func (buf *genBuf) Print(n Node) {
 			buf.Add("return __mainRet__;").Line()
 		}
 		buf.Add("}").Line()
-	case Stmt:
+	case *Stmt:
 		buf.Print(t.node)
 		// buf.Add(";").Line()
-	case ForStmt:
+	case *ForStmt:
 		buf.Add("for (")
 		buf.Print(t.init)
 		buf.Add("; ")
@@ -258,10 +270,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add("}")
 	case *VarStmt:
 		if !t.global {
-			typeStr := "int"
-			if t.name.str == "st" {
-				typeStr = "structTest"
-			}
+			typeStr := typeStr(t.ty)
 
 			buf.
 				Add(typeStr).
@@ -271,7 +280,7 @@ func (buf *genBuf) Print(n Node) {
 			buf.Print(t.initExpr)
 		}
 
-	case IfStmt:
+	case *IfStmt:
 		buf.Add("if (")
 		buf.Print(t.cond)
 		buf.Add(") {").Line()
@@ -287,7 +296,7 @@ func (buf *genBuf) Print(n Node) {
 
 	case *ArgNode:
 		for i := range t.args {
-			buf.Add(t.args[i].kind.str).
+			buf.Add(typeStr(t.args[i].Type())).
 				Add(" ").
 				Add(t.args[i].name.str).
 				Add(" ")
@@ -308,46 +317,47 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.expr)
 		buf.Add(")") // buf.Add(");").Line()
 
-	case CallExpr:
+	case *CallExpr:
 		buf.Print(t.callee)
-		buf.Add("( ")
+		buf.Add("(")
 		buf.PrintArgList(t.args)
 		buf.Add(")")
-	case GetExpr:
+	case *GetExpr:
 		buf.Print(t.obj)
 		buf.Add(".")
 		buf.Add(t.name.str)
-	case SetExpr:
+	case *SetExpr:
 		buf.Print(t.obj)
 		buf.Add(".")
 		buf.Add(t.name.str)
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *BinaryExpr:
+		// TODO: For equality, you need to emit custom struct equality checks
 		buf.Add("(")
 		buf.Print(t.left)
 		buf.Add(" ").Add(t.op.str).Add(" ")
 		buf.Print(t.right)
 		buf.Add(")")
-	case UnaryExpr:
+	case *UnaryExpr:
 		buf.Add("(").Add(t.op.str)
 		buf.Print(t.right)
 		buf.Add(")")
-	case AssignExpr:
+	case *AssignExpr:
 		buf.Add(t.name.str)
 		buf.Add(" = ")
 		buf.Print(t.value)
-	case VarExpr:
+	case *IdentExpr:
 		buf.Add(t.tok.str)
 	case *CompLitExpr:
 		buf.Add("(").
-			Add(t.ty).
+			Add(typeStr(t.ty)).
 			Add(")")
 		buf.Add("{ ")
 		buf.PrintArgList(t.args)
 		buf.Add(" }")
 
-	case LitExpr:
+	case *LitExpr:
 		buf.Add(t.tok.str)
 	default:
 		panic(fmt.Sprintf("Print: Unknown NodeType: %T", t))

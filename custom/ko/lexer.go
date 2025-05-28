@@ -368,7 +368,7 @@ func (l *Lexer) lexIdent() string {
 		}
 		l.pos.column++
 
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' {
 			lit = lit + string(r)
 		} else {
 			// scanned something not in the identifier
