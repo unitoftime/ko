@@ -4,7 +4,16 @@ import "fmt"
 
 // TODO: I think every type needs to just be a nil pointer in every node, and then it gets computed as I walk through the resolve. and has information, like what the underlying type is, and if its comparable, and little bits like that. Obviously things like structs and funcs have that all predeclared, then expressions i kinda just walk through to see what matches what
 // type Type string
-type Type string
+type Type struct {
+	name string // The name of the type
+
+	// General Type information
+	comparable bool
+}
+
+var (
+	BoolType = &Type{"bool", true}
+)
 
 // type Type interface {
 // 	Underlying()
@@ -12,14 +21,14 @@ type Type string
 // }
 
 // Tries to cast type A to type B
-func tryCast(a, b Type) bool {
+func tryCast(a, b *Type) bool {
 	switch a {
 	case IntLitType:
-		_, ok := intLitCast[b]
+		_, ok := intLitCast[b.name]
 		// fmt.Println("IntLitCast:", a, b, ok)
 		return ok
 	case FloatLitType:
-		_, ok := floatLitCast[b]
+		_, ok := floatLitCast[b.name]
 		// fmt.Println("FloatLitCast:", a, b, ok)
 		return ok
 	}
@@ -28,7 +37,7 @@ func tryCast(a, b Type) bool {
 
 
 // List of types that can be cast to int
-var intLitCast = map[Type]bool {
+var intLitCast = map[string]bool {
 	"byte": true,
 	"rune": true,
 
@@ -53,7 +62,7 @@ var intLitCast = map[Type]bool {
 	"int64": true,
 }
 
-var floatLitCast = map[Type]bool {
+var floatLitCast = map[string]bool {
 	"byte": true,
 	"rune": true,
 
@@ -84,14 +93,19 @@ var floatLitCast = map[Type]bool {
 	"float64": true,
 }
 
-const (
-	UnknownType Type = ""
+const IntLitName = "untypedInt"
+const FloatLitName = "untypedFloat"
+const StringLitName = "untypedString"
+
+var (
+	UnknownType *Type = nil
+	VoidType *Type = &Type{"void", false} // TODO: Comparability?
 
 	// These are literal types that can be dynamically resolved to whatever is needed
 	// TODO: UntypedBool,Int,Rune,Float,Complex,String,Nil?
-	IntLitType Type = "intlit"
-	FloatLitType Type = "floatlit"
-	StringLitType Type = "stringlit"
+	IntLitType *Type = &Type{IntLitName, true}
+	FloatLitType *Type = &Type{FloatLitName, true}
+	StringLitType *Type = &Type{StringLitName, true}
 
 	// TODO: Should I do compound lits this way too?
 )
@@ -99,11 +113,11 @@ const (
 // const AutoType = "auto"
 
 // Map from ko types to C equivalent types
-var typeMap = map[Type]string{
+var typeMap = map[string]string{
 	// Default unresolved lits
-	IntLitType: "int",
-	FloatLitType: "float",
-	// StringLitType: "string",
+	IntLitName: "int",
+	FloatLitName: "float",
+	// StringLitName: "string",
 
 	"byte": "uint8_t",
 	"rune": "int32_t",
@@ -141,14 +155,17 @@ var typeMap = map[Type]string{
 
 	// "string": TODO
 }
-func typeStr(in Type) string {
-	if in == "" {
+func typeStr(in *Type) string {
+	if in == UnknownType {
+		panic("UNKNOWN TYPE")
+	}
+	if in.name == "" {
 		panic("BLANK TYPE")
 	}
 
-	ret, ok := typeMap[in]
+	ret, ok := typeMap[in.name]
 	if !ok {
-		return string(in) // If it wasn't a builtin type, then it probably came from a custom type
+		return string(in.name) // If it wasn't a builtin type, then it probably came from a custom type
 	}
 
 	// TODO: Might be better to register the type or smth? then look it up later in the LUT
@@ -156,9 +173,9 @@ func typeStr(in Type) string {
 	return ret
 }
 
-func typeOf(node Node) Type {
+func typeOf(node Node) *Type {
 	if node == nil {
-		return ""
+		return UnknownType
 	}
 	switch t := node.(type) {
 	// case *FileNode:
@@ -178,35 +195,43 @@ func typeOf(node Node) Type {
 	// case VarExpr:
 
 	case *BinaryExpr:
-		if t.ty != "" {
+		if t.ty != UnknownType {
 			return t.ty
 		}
 		panic("unknown binaryexpr type")
 	case *CompLitExpr:
-		if t.ty != "" {
+		if t.ty != UnknownType {
 			return t.ty
 		}
 		panic("unknown complit type")
 
 	case *VarStmt:
-		if t.ty != "" {
+		if t.ty != UnknownType {
 			return t.ty
 		}
-		return typeOf(t.initExpr)
+		return t.ty
 
 	case *StructNode:
-		return Type(t.ident.str)
+		return &Type{t.ident.str, true}
+
 	case *FuncNode:
+		panic("YOU CANT CONSTRUCT THESE HERE THY NEED TOBE LOOKED UP FROM SCOPE EVERY TIME!")
+		// Note: This needs to return a more complicated type that can be given args and can return args
+		if t.returns == nil || len(t.returns.args) == 0 {
+			return UnknownType
+		}
+		return &Type{t.returns.args[0].kind.str, true}
+
 		// Note: Somewhat confusingly, we actually want the type that the funcNode *returns* not the type of the funcnode
-		rets := csvJoinArgNode(t.returns)
-		return rets
+		// rets := csvJoinArgNode(t.returns)
+		// return rets
 
 		// args := csvJoinArgNode(t.arguments)
 		// rets := csvJoinArgNode(t.returns)
 		// return fmt.Sprintf("func(%s) (%s)", args, rets)
 
 	case *Arg:
-		return Type(t.kind.str)
+		return &Type{t.kind.str, true}
 	case *LitExpr:
 		switch t.kind {
 		case INT:
@@ -218,26 +243,28 @@ func typeOf(node Node) Type {
 		default:
 			panic("AAA")
 		}
+	case *BuiltinNode:
+		return t.ty
 
 	default:
 		panic(fmt.Sprintf("typeOf: Unknown NodeType: %T", t))
 	}
 }
 
-func csvJoinArgNode(node *ArgNode) Type {
-	if node == nil { return "" }
-	return csvJoinArgs(node.args)
-}
-func csvJoinArgs(args []*Arg) Type {
-	str := Type("")
-	for i := range args {
-		str += typeOf(args[i])
-		if i < len(args)-1 {
-			str += ","
-		}
-	}
-	return str
-}
+// func csvJoinArgNode(node *ArgNode) Type {
+// 	if node == nil { return "" }
+// 	return csvJoinArgs(node.args)
+// }
+// func csvJoinArgs(args []*Arg) Type {
+// 	str := Type("")
+// 	for i := range args {
+// 		str += typeOf(args[i])
+// 		if i < len(args)-1 {
+// 			str += ","
+// 		}
+// 	}
+// 	return str
+// }
 
 func (r *Resolver) isComparable(n Node) bool {
 	// fmt.Printf("isComparable: %T\n", n)

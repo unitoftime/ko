@@ -8,6 +8,7 @@ import (
 
 func printErr(tok Token, msg string) {
 	fmt.Printf("./%s:%d:%d: %s\n", tok.pos.filename, tok.pos.line, tok.pos.column, msg)
+	panic("AAA")
 }
 
 func parseError(expected TokenType, got Token) error {
@@ -17,6 +18,7 @@ func parseError(expected TokenType, got Token) error {
 type Node interface {
 	// WalkGraphviz(string, *bytes.Buffer)
 	Pos() Position
+	Type() *Type
 }
 
 type FileNode struct {
@@ -26,24 +28,35 @@ type FileNode struct {
 func (n *FileNode) Pos() Position {
 	return Position{}
 }
-
+func (n *FileNode) Type() *Type {
+	return UnknownType
+}
 type FuncNode struct {
 	pos Position
 	name string
 	arguments *ArgNode
 	returns *ArgNode
 	body Node
+	ty *Type
 }
 func (n *FuncNode) Pos() Position {
 	return Position{}
 }
+func (n *FuncNode) Type() *Type {
+	return n.ty
+}
+
 type StructNode struct {
 	global bool
 	ident Token
 	fields []*Arg
+	ty *Type
 }
 func (n *StructNode) Pos() Position {
 	return Position{}
+}
+func (n *StructNode) Type() *Type {
+	return n.ty
 }
 
 type CurlyScope struct {
@@ -52,12 +65,18 @@ type CurlyScope struct {
 func (n *CurlyScope) Pos() Position {
 	return Position{}
 }
+func (n *CurlyScope) Type() *Type {
+	return UnknownType
+}
 
 type PackageNode struct {
 	name string
 }
 func (n *PackageNode) Pos() Position {
 	return Position{}
+}
+func (n *PackageNode) Type() *Type {
+	return UnknownType
 }
 
 type CommentNode struct {
@@ -66,23 +85,31 @@ type CommentNode struct {
 func (n *CommentNode) Pos() Position {
 	return Position{}
 }
+func (n *CommentNode) Type() *Type {
+	return UnknownType
+}
 
 type ReturnNode struct {
 	expr Node
+	ty *Type
 }
 func (n *ReturnNode) Pos() Position {
 	return Position{}
+}
+func (n *ReturnNode) Type() *Type {
+	return n.ty
 }
 
 type Arg struct {
 	name Token
 	kind Token
+	ty *Type
 }
 func (n *Arg) Pos() Position {
 	return Position{}
 }
-func (a *Arg) Type() Type {
-	return Type(a.kind.str)
+func (n *Arg) Type() *Type {
+	return n.ty
 }
 
 type ArgNode struct {
@@ -91,16 +118,23 @@ type ArgNode struct {
 func (n *ArgNode) Pos() Position {
 	return Position{}
 }
+func (n *ArgNode) Type() *Type {
+	return UnknownType
+}
 
 type VarStmt struct {
 	name Token
 	global bool
 	initExpr Node
-	ty Type
+	ty *Type
 }
 func (n *VarStmt) Pos() Position {
 	return Position{}
 }
+func (n *VarStmt) Type() *Type {
+	return n.ty
+}
+
 type IfStmt struct {
 	cond Node
 	thenScope Node
@@ -108,6 +142,9 @@ type IfStmt struct {
 }
 func (n *IfStmt) Pos() Position {
 	return Position{}
+}
+func (n *IfStmt) Type() *Type {
+	return UnknownType
 }
 
 type ForStmt struct {
@@ -118,48 +155,69 @@ type ForStmt struct {
 func (n *ForStmt) Pos() Position {
 	return Position{}
 }
-
+func (n *ForStmt) Type() *Type {
+	return UnknownType
+}
 
 type Stmt struct {
 	node Node
+	ty *Type
 }
 func (n *Stmt) Pos() Position {
 	return Position{}
+}
+func (n *Stmt) Type() *Type {
+	return n.ty
 }
 
 type CallExpr struct {
 	callee Node
 	rparen Token // Just for position data I guess?
 	args []Node
+	ty *Type // Note: This is the type returned by the call
 }
 func (n *CallExpr) Pos() Position {
 	return Position{}
+}
+func (n *CallExpr) Type() *Type {
+	return n.ty
 }
 
 type CompLitExpr struct {
 	callee Node
 	args []Node
-	ty Type
+	ty *Type
 }
 func (n *CompLitExpr) Pos() Position {
 	return Position{}
+}
+func (n *CompLitExpr) Type() *Type {
+	return UnknownType
 }
 
 type GetExpr struct {
 	obj Node
 	name Token
+	ty *Type
 }
 func (n *GetExpr) Pos() Position {
 	return Position{}
+}
+func (n *GetExpr) Type() *Type {
+	return n.ty
 }
 
 type SetExpr struct {
 	obj Node
 	name Token
 	value Node
+	ty *Type
 }
 func (n *SetExpr) Pos() Position {
 	return Position{}
+}
+func (n *SetExpr) Type() *Type {
+	return n.ty
 }
 
 type LogicalExpr struct {
@@ -170,6 +228,9 @@ type LogicalExpr struct {
 func (n *LogicalExpr) Pos() Position {
 	return Position{}
 }
+func (n *LogicalExpr) Type() *Type {
+	return BoolType // TODO: Is this always the case?
+}
 
 type AssignExpr struct {
 	name Token
@@ -178,14 +239,20 @@ type AssignExpr struct {
 func (n *AssignExpr) Pos() Position {
 	return Position{}
 }
+func (n *AssignExpr) Type() *Type {
+	return UnknownType
+}
 
 type BinaryExpr struct {
 	left, right Node
 	op Token
-	ty Type
+	ty *Type
 }
 func (n *BinaryExpr) Pos() Position {
 	return Position{}
+}
+func (n *BinaryExpr) Type() *Type {
+	return n.ty
 }
 
 type UnaryExpr struct {
@@ -195,27 +262,53 @@ type UnaryExpr struct {
 func (n *UnaryExpr) Pos() Position {
 	return Position{}
 }
+func (n *UnaryExpr) Type() *Type {
+	panic("AAAAA")
+	return UnknownType // TODO: based on operator and node
+}
 
 type LitExpr struct {
 	tok Token
 	kind TokenType
+	ty *Type
 }
 func (n *LitExpr) Pos() Position {
 	return Position{}
 }
+func (n *LitExpr) Type() *Type {
+	return n.ty
+}
+
 type IdentExpr struct {
 	tok Token
-	ty Type
+	ty *Type
 }
 func (n *IdentExpr) Pos() Position {
 	return Position{}
 }
+func (n *IdentExpr) Type() *Type {
+	return n.ty
+}
 
 type GroupingExpr struct {
 	Node
+	ty *Type
 }
 func (n *GroupingExpr) Pos() Position {
 	return Position{}
+}
+func (n *GroupingExpr) Type() *Type {
+	return n.ty
+}
+
+type BuiltinNode struct {
+	ty *Type
+}
+func (n *BuiltinNode) Pos() Position {
+	return Position{}
+}
+func (n *BuiltinNode) Type() *Type {
+	return n.ty
 }
 
 // --------------------------------------------------------------------------------
@@ -413,7 +506,7 @@ func (p *Parser) TypeNode(globalScope bool) Node {
 			field := p.Consume(IDENT)
 			kind := p.Consume(IDENT)
 			p.Consume(SEMI)
-			fields = append(fields, &Arg{field, kind})
+			fields = append(fields, &Arg{field, kind, UnknownType})
 		}
 
 		s := &StructNode{
@@ -533,7 +626,7 @@ func (p *Parser) ParseTypedArg(tokens *Tokens) *Arg {
 		panic(fmt.Sprintf("MUST BE IDENT: %s", kind.str))
 	}
 
-	return &Arg{name, kind}
+	return &Arg{name, kind, UnknownType}
 }
 
 // func (p *Parser) ParseExprNode(tokens *Tokens) Node {
@@ -583,7 +676,7 @@ func (p *Parser) parseStatement() Node {
 	// // 	return Stmt{p.ParseFuncCall(tokens)}
 	// }
 
-	return &Stmt{p.ParseExpression()}
+	return &Stmt{p.ParseExpression(), UnknownType}
 }
 
 func (p *Parser) varDecl(globalScope bool) *VarStmt {
@@ -681,7 +774,7 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 		getExp, validTarget := expr.(*GetExpr)
 		if validTarget {
 			name := getExp.name
-			return &SetExpr{getExp.obj, name, value}
+			return &SetExpr{getExp.obj, name, value, UnknownType}
 		}
 
 
@@ -826,7 +919,7 @@ func (p *Parser) ParseExprCall() Node {
 			expr = p.FinishCompLit(expr)
 		} else if  p.Match(DOT) {
 			name := p.Consume(IDENT)
-			expr = &GetExpr{expr, name}
+			expr = &GetExpr{expr, name, UnknownType}
 		} else {
 			break
 		}
@@ -837,7 +930,7 @@ func (p *Parser) ParseExprCall() Node {
 
 func (p *Parser) FinishCall(callee Node) Node {
 	if p.Match(RPAREN) {
-		return &CallExpr{callee, p.tokens.Prev(), nil}
+		return &CallExpr{callee, p.tokens.Prev(), nil, UnknownType}
 	}
 
 	args := make([]Node, 0)
@@ -852,7 +945,7 @@ func (p *Parser) FinishCall(callee Node) Node {
 		}
 	}
 	tok := p.Consume(RPAREN)
-	return &CallExpr{callee, tok, args}
+	return &CallExpr{callee, tok, args, UnknownType}
 }
 
 func (p *Parser) FinishCompLit(callee Node) Node {
@@ -883,18 +976,18 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	// case NIL: fallthrough
 	case INT:
 		tok := tokens.Next()
-		return &LitExpr{tok, INT}
+		return &LitExpr{tok, INT, IntLitType}
 	case FLOAT:
 		tok := tokens.Next()
-		return &LitExpr{tok, FLOAT}
+		return &LitExpr{tok, FLOAT, FloatLitType}
 	case IDENT:
 		tok := tokens.Next()
 		return &IdentExpr{tok, UnknownType}
 	case STRING:
 		tok := tokens.Next()
-		return &LitExpr{tok, STRING}
+		return &LitExpr{tok, STRING, StringLitType}
 	case LPAREN:
-		expr := &GroupingExpr{p.Equality(tokens)}
+		expr := &GroupingExpr{p.Equality(tokens), UnknownType}
 
 		tokens.Consume(RPAREN)
 		return expr

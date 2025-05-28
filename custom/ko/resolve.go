@@ -6,6 +6,12 @@ import (
 	"github.com/unitoftime/flow/ds"
 )
 
+// DO three passes
+// 1. Register all global identifiers and types and functions
+// 2. Go through all global ident list and typecheck them (they should all be interdependent on eachother
+// 3. switch to local mode and type check all function scopes
+
+
 type Scope struct {
 	ident map[string]Node // A map of identifiers for the scope
 	types map[string]Node // A map of types for the scope
@@ -67,8 +73,10 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		if !ok {
 			printErr(t.tok, fmt.Sprintf("Unknown Variable: %s", t.tok.str))
 		}
-		strType := typeOf(n)
-		structNode, ok := r.CheckScope(string(strType))
+		fmt.Println("AAA:", n)
+		strType := n.Type()
+
+		structNode, ok := r.CheckScope(strType.name)
 		if !ok {
 			printErr(t.tok, fmt.Sprintf("Unknown type: %s", t.tok.str))
 		}
@@ -141,8 +149,12 @@ func (r *Resolver) PopScope() {
 
 func NewResolver() *Resolver {
 	builtin := NewScope()
-	builtin.AddIdent("printf", nil)
-	builtin.AddIdent("Assert", nil)
+	builtin.AddIdent("printf", &BuiltinNode{&Type{"void", false}})
+	builtin.AddIdent("Assert", &BuiltinNode{&Type{"void", false}})
+
+	// Add builtin types
+	builtin.AddIdent("u64", &BuiltinNode{&Type{"u64", true}})
+	builtin.AddIdent("int", &BuiltinNode{&Type{"int", true}})
 
 	return &Resolver{
 		builtin: builtin,
@@ -174,6 +186,20 @@ func (r *Resolver) RegisterGlobal(result ParseResult) {
 	for i := range result.varList {
 		r.registerGlobal(result.varList[i])
 	}
+
+
+	// Resolve
+	for i := range result.typeList {
+		r.resolveGlobal(result.typeList[i])
+	}
+
+	for i := range result.fnList {
+		r.resolveGlobal(result.fnList[i])
+	}
+
+	for i := range result.varList {
+		r.resolveGlobal(result.varList[i])
+	}
 }
 
 func (r *Resolver) ResolveLocal(n Node) {
@@ -195,6 +221,7 @@ func (r *Resolver) registerGlobal(n Node) {
 	case *VarStmt:
 		r.global.AddIdent(t.name.str, t) // Register the global identifier
 	case *StructNode:
+		// t.ty = typeOf(t)
 		r.global.AddIdent(t.ident.str, t) // Register struct name
 	case *ArgNode:
 	case *Stmt:
@@ -235,9 +262,57 @@ func (r *Resolver) registerGlobal(n Node) {
 	}
 }
 
+func (r *Resolver) resolveGlobal(node Node) *Type {
+	switch t := node.(type) {
+	case *FuncNode:
+		// TODO: Build a Func type that has all the filds and returns
+		if t.returns == nil || len(t.returns.args) == 0 {
+			t.ty = VoidType
+		} else {
+			retName := t.returns.args[0].kind.str
+			retNode, ok := r.CheckScope(retName)
+			if !ok {
+				printErr(Token{pos: t.pos}, fmt.Sprintf("Unknown Type: %s", retName))
+			}
+			t.ty = r.resolveGlobal(retNode)
+			fmt.Println("ResolveGlobal:", t, t.ty)
+		}
+
+		return t.ty
+	case *VarStmt:
+		t.ty = r.resolveLocal(t.initExpr)
+		return t.ty
+	case *StructNode:
+		for _, field := range t.fields {
+			t.ty = r.resolveGlobal(field)
+		}
+		// TODO: Build a struct type that would have all the fields of the structs and their types
+		t.ty = &Type{t.ident.str, true}
+		return t.ty
+	case *Arg:
+		def, ok := r.CheckScope(t.kind.str)
+		if !ok {
+			printErr(t.name, fmt.Sprintf("Unknown Type: %s", t.kind.str))
+		}
+		fmt.Println("Resolve Arg... Def:", def)
+		t.ty = def.Type()
+		return t.ty
+
+	case *BuiltinNode:
+		return t.ty
+	default:
+		panic(fmt.Sprintf("resolveGlobal: Unknown NodeType: %T", t))
+	}
+	return UnknownType
+}
+
 // Returns the type of that node, if untyped returns ""
 // For functions: returns the type that the node expression returns
-func (r *Resolver) resolveLocal(node Node) Type {
+func (r *Resolver) resolveLocal(node Node) *Type {
+	// if node.Type() != nil {
+	// 	return node.Type()
+	// }
+
 	switch t := node.(type) {
 	case *FileNode:
 		for _, nn := range t.nodes {
@@ -248,31 +323,47 @@ func (r *Resolver) resolveLocal(node Node) Type {
 	case *CommentNode:
 		// Skip
 	case *StructNode:
+		fmt.Println("StructNode:", t)
 		if r.LocalScope() {
+			for _, field := range t.fields {
+				t.ty = r.resolveGlobal(field)
+			}
+			// TODO: Build a struct type that would have all the fields of the structs and their types
+			t.ty = &Type{t.ident.str, true}
 			r.Scope().AddIdent(t.ident.str, t)
 		}
 	case *FuncNode:
+		fmt.Println("FuncNode:", t)
+
 		m := r.PushScope()
 
 		if t.arguments != nil {
 			for _, arg := range t.arguments.args {
+				fmt.Println("t.arguments.args")
+				r.resolveLocal(arg)
 				m.AddIdent(arg.name.str, arg)
 			}
 		}
 		if t.returns != nil {
 			for _, ret := range t.returns.args {
+				fmt.Println("t.returns.args")
+				r.resolveLocal(ret)
 				m.AddIdent(ret.name.str, ret)
 			}
 		}
 
+		fmt.Println("t.body")
 		r.resolveLocal(t.body)
 
 		r.PopScope()
 
-		return typeOf(t)
+		return t.ty
 	case *Stmt:
-		return r.resolveLocal(t.node)
+		fmt.Println("Stmt:", t)
+		t.ty = r.resolveLocal(t.node)
+		return t.ty
 	case *ForStmt:
+		fmt.Println("ForStmt:", t)
 		// TODO: Invalid unless in function
 		r.PushScope()
 		r.resolveLocal(t.init)
@@ -283,6 +374,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		r.PopScope()
 
 	case *IfStmt:
+		fmt.Println("IfStmt:", t)
 		// TODO: Invalid unless in function
 		r.resolveLocal(t.cond)
 
@@ -298,21 +390,31 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		}
 
 	case *CurlyScope:
+		fmt.Println("CurlyScope")
 		for i := range t.nodes {
+			fmt.Printf("CurlyScopeNode: %T\n", t.nodes[i])
 			r.resolveLocal(t.nodes[i])
 		}
 
 	case *VarStmt:
-		ty := UnknownType
-		ty = r.resolveLocal(t.initExpr)
+		fmt.Printf("VarStmt: %T +%v\n", t.initExpr, t.initExpr)
+		t.ty = r.resolveLocal(t.initExpr)
+		fmt.Printf("VarStmtType: %+v\n", t.ty)
 		if r.LocalScope() {
 			r.Scope().AddIdent(t.name.str, t) // For global we register it before
 		}
-		t.ty = ty
-		return ty
+		return t.ty
 
 	case *Arg:
-		return typeOf(t)
+		fmt.Println("Resolve Arg:", t)
+		def, ok := r.CheckScope(t.kind.str)
+		if !ok {
+			printErr(t.name, fmt.Sprintf("Unknown Type: %s", t.kind.str))
+		}
+		fmt.Println("Resolve Arg... Def:", def)
+		t.ty = def.Type()
+
+		return t.ty
 	case *ArgNode:
 		panic("ARGNODE")
 		// TODO: Are these just for func args? Maybe add to global scoping check
@@ -328,17 +430,19 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// }
 
 	case *ReturnNode:
+		fmt.Println("ReturnNode:", t)
 		// TODO: Check to make sure return type matches func return type or blank if void
 		return r.resolveLocal(t.expr)
 
 	case *CallExpr:
+		fmt.Println("CallExpr:", t)
 		callTy := r.resolveLocal(t.callee) // TODO: How does this work if it returns a call target?
 
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-
-		return callTy
+		t.ty = callTy
+		return t.ty
 
 		// fmt.Println("CallExpr:", callTy)
 		// // n, ok := r.CheckScope(t.callee)
@@ -347,36 +451,40 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// return "TODO"
 
 	case *GetExpr:
-		r.resolveLocal(t.obj)
+		fmt.Println("GetExpr:", t)
+		// t.ty = r.resolveLocal(t.obj)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
 			printErr(t.name, fmt.Sprintf("Unknown Variable: %s", t.name.str))
 		}
-		return typeOf(n)
+		return n.Type()
 	case *SetExpr:
-		r.resolveLocal(t.obj)
+		fmt.Println("SetExpr:", t)
+		t.ty = r.resolveLocal(t.obj)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
 			printErr(t.name, fmt.Sprintf("Unknown Variable: %s", t.name.str))
 		}
-		return typeOf(n)
+		return n.Type()
 	case *AssignExpr:
+		fmt.Println("AssignExpr:", t)
 		valType := r.resolveLocal(t.value)
 		n, ok := r.CheckScope(t.name.str)
 		if !ok {
 			printErr(t.name, fmt.Sprintf("Missing Variable: %s", t.name.str))
 		}
 
-		objType := typeOf(n)
+		objType := n.Type()
 		if valType != objType {
 			printErr(t.name, fmt.Sprintf("Mismatched types: %s, %s, %s", objType, valType, "="))
 		}
 
-		return ""
+		return UnknownType
 
 	case *BinaryExpr:
+		fmt.Println("BinaryExpr:", t)
 		// lType := r.resolveLocal(t.left)
 		// rType := r.resolveLocal(t.right)
 		// resultType, success := checkBinaryExpr(lType, rType, t.op)
@@ -389,38 +497,46 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		return resultType
 
 	case *UnaryExpr:
+		fmt.Println("UnaryExpr:", t)
 		// TODO: Impl
 
 	case *IdentExpr:
+		fmt.Println("IdentExpr:", t)
 		// TODO: Check that we have the needed variable
 		node, ok := r.CheckScope(t.tok.str)
 		if !ok {
 			printErr(t.tok, fmt.Sprintf("Undefined Variable: %s", t.tok.str))
-			return ""
+			return UnknownType
 		}
-		t.ty = typeOf(node)
+		t.ty = node.Type()
+		fmt.Println("IdentExpr.Type:", t)
+		// t.ty = r.resolveLocal(node)
 		return t.ty
 
 	case *CompLitExpr:
-		ty := r.resolveLocal(t.callee)
+		fmt.Println("CompLitExpr:", t)
+		t.ty = r.resolveLocal(t.callee)
+
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		t.ty = ty
 		// fmt.Println("CompLitExpr:", t)
-		return ty
+		return t.ty
 
 	case *LitExpr:
-		return typeOf(t)
+		fmt.Println("LitExpr:", t)
+		return t.Type()
+		// t.ty = typeOf(t)
+		// return t.ty
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
 	}
 
-	return ""
+	return UnknownType
 }
 
 // Returns the resulting type of the binary expression, and bool if the type check was ok
-func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (Type, bool) {
+func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 	left := r.resolveLocal(t.left)
 	right := r.resolveLocal(t.right)
 
@@ -446,7 +562,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (Type, bool) {
 			return UnknownType, false
 		}
 
-		return "bool", true
+		return BoolType, true
 
 	// Ordered
 	case GREATER: fallthrough
@@ -459,7 +575,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (Type, bool) {
 		// 	return UnknownType, false
 		// }
 
-		return "bool", true
+		return BoolType, true
 
 		// Result matches original
 	case SUB: fallthrough
@@ -514,7 +630,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (Type, bool) {
 
 // Check if the left or right side can be type cast to the other from a literal to a concrete
 // Returns the resulting concrete type and true if successful, else returns false
-func checkLitTypeCast(left, right Type) (Type, bool) {
+func checkLitTypeCast(left, right *Type) (*Type, bool) {
 	ok := tryCast(left, right)
 	if ok {
 		// fmt.Println("TryLitTypeCast", right, ok)
