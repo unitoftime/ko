@@ -47,6 +47,7 @@ func returnArgsToString(node Node) string {
 	if node == nil { return "void" }
 
 	argNode, ok := node.(*ArgNode)
+	if !ok { return "void" }
 	if argNode == nil { return "void" }
 
 	if !ok { panic(fmt.Sprintf("must be arg node: %T", node)) }
@@ -261,13 +262,17 @@ func (buf *genBuf) Print(n Node) {
 		}
 
 	case *ArgNode:
-		for i := range t.args {
-			buf.Add(typeStr(t.args[i].ty)).
-				Add(" ").
-				Add(t.args[i].name.str).
-				Add(" ")
-			if i < len(t.args)-1 {
-				buf.Add(", ")
+		if len(t.args) <= 0 {
+			buf.Add("void")
+		} else {
+			for i := range t.args {
+				buf.Add(typeStr(t.args[i].ty)).
+					Add(" ").
+					Add(t.args[i].name.str).
+					Add(" ")
+				if i < len(t.args)-1 {
+					buf.Add(", ")
+				}
 			}
 		}
 	case *ScopeNode:

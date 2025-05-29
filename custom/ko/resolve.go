@@ -57,6 +57,18 @@ func (r *Resolver) Scope() *Scope {
 	return r.scopes.Buffer[len(r.scopes.Buffer) - 1]
 }
 
+func (r *Resolver) AddIdent(name string, n Node) {
+	// Check Shadowing
+	_, exists := r.CheckScope(name)
+	if exists {
+		nodeError(n, "declartion shadows a previous variable")
+		panic("AA")
+	}
+
+	// Add
+	r.Scope().AddIdent(name, n)
+}
+
 // func (r *Resolver) GetCallExprType(obj CallExpr) (Node, bool) {
 // 	CheckScope(
 // }
@@ -66,14 +78,13 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 	case *IdentExpr:
 		n, ok := r.CheckScope(t.tok.str)
 		if !ok {
-			printErr(t.tok, fmt.Sprintf("Unknown Variable: %s", t.tok.str))
+			errUndefinedVar(n, t.tok.str)
 		}
-		Println("AAA:", n)
 		strType := n.Type()
 
 		structNode, ok := r.CheckScope(strType.name)
 		if !ok {
-			printErr(t.tok, fmt.Sprintf("Unknown type: %s", t.tok.str))
+			errUndefinedType(structNode, strType.name)
 		}
 		return getField(structNode, field)
 
@@ -221,7 +232,7 @@ func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 		retName := t.returns.args[0].kind.str
 		retNode, ok := r.CheckScope(retName)
 		if !ok {
-			printErr(Token{pos: t.pos}, fmt.Sprintf("Unknown Type: %s", retName))
+			errUndefinedType(t, retName)
 		}
 		t.ty = r.resolveLocal(retNode)
 		Println("ResolveGlobal:", t, t.ty)
@@ -255,33 +266,27 @@ func (r *Resolver) registerGlobal(n Node) {
 	case *LitExpr:
 
 	case *ForStmt:
-		printErr(t.tok, fmt.Sprintf("For loop not supported in global scope: %s", t.tok.str))
+		nodeError(t, "For loop not supported in global scope")
 
 	case *IfStmt:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("If statements not supported in global scope: %s", tok.str))
+		nodeError(t, "If statements not supported in global scope")
 
 	case *CurlyScope:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("Curly Scopes are not supported in global scope: %s", tok.str))
+		nodeError(t, "Curly Scopes are not supported in global scope")
 
 	case *ReturnNode:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("Return statements are not supported in global scope: %s", tok.str))
+		nodeError(t, "Return statements are not supported in global scope")
 
 	case *CallExpr:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("Call Expressions are not supported in global scope: %s", tok.str))
+		nodeError(t, "Call Expressions are not supported in global scope")
 
 	case *BinaryExpr:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("Binary Expressions are not supported in global scope: %s", tok.str))
+		nodeError(t, "Binary Expressions are not supported in global scope")
 
 	case *AssignExpr:
-		tok := Token{}
-		printErr(tok, fmt.Sprintf("Assign Expressions are not supported in global scope: %s", tok.str))
+		nodeError(t, "Assign Expressions are not supported in global scope")
 	case *IdentExpr:
-		printErr(t.tok, fmt.Sprintf("Assign Expressions are not supported in global scope: %s", t.tok.str))
+		nodeError(t, "Identifier Expressions are not supported in global scope")
 
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
@@ -315,7 +320,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// TODO: Build a struct type that would have all the fields of the structs and their types
 		t.ty = &Type{t.ident.str, true, true}
 		if r.LocalScope() {
-			r.Scope().AddIdent(t.ident.str, t)
+			r.AddIdent(t.ident.str, t)
 		}
 		return t.ty
 	case *FuncNode:
@@ -329,7 +334,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 			for _, arg := range t.arguments.args {
 				Println("t.arguments.args")
 				r.resolveLocal(arg)
-				m.AddIdent(arg.name.str, arg)
+				r.AddIdent(arg.name.str, arg)
 			}
 		}
 		if t.returns != nil {
@@ -337,7 +342,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 				Println("t.returns.args", ret.name.str)
 				r.resolveLocal(ret)
 				if ret.name.str != "" {
-					m.AddIdent(ret.name.str, ret)
+					r.AddIdent(ret.name.str, ret)
 				}
 			}
 		}
@@ -399,7 +404,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		t.ty = r.resolveLocal(t.initExpr)
 
 		if r.LocalScope() {
-			r.Scope().AddIdent(t.name.str, t) // For global we register it before
+			r.AddIdent(t.name.str, t) // For global we register it before
 		}
 		Printf("VarStmt.Typed: %+v\n", t)
 		return t.ty
@@ -408,7 +413,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		Println("Resolve Arg:", t)
 		def, ok := r.CheckScope(t.kind.str)
 		if !ok {
-			printErr(t.name, fmt.Sprintf("Unknown Type: %s", t.kind.str))
+			errUndefinedType(t, t.kind.str)
 		}
 		Println("Resolve Arg... Def:", def)
 		t.ty = def.Type()
@@ -435,7 +440,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		currentFuncScope, ok := r.GetFuncScope()
 		if !ok {
 			// TODO: Positioning
-			printErr(Token{}, fmt.Sprintf("Return statement must be inside a function: %s", "return"))
+			nodeError(t, "Return statement must be inside a function")
 		}
 
 		//----------------------------------------
@@ -445,12 +450,12 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// Match return args with func args
 		if len(currentFuncScope.returns.args) != 1 {
 			// TODO: Positioning
-			printErr(Token{}, fmt.Sprintf("Mismatched arguments with return: %s", "return"))
+			nodeError(t, "Mismatched return arguments")
 		}
 
 		if currentFuncScope.returns.args[0].Type() != t.ty {
 			// TODO: Positioning
-			printErr(Token{}, fmt.Sprintf("Incorrect return type: %s", "return"))
+			nodeError(t, "Incorrect return type")
 		}
 
 		return t.ty
@@ -477,7 +482,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
-			printErr(t.name, fmt.Sprintf("Unknown Variable: %s", t.name.str))
+			errUndefinedVar(t, t.name.str)
 		}
 		t.ty = n.Type()
 		return t.ty
@@ -487,7 +492,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
-			printErr(t.name, fmt.Sprintf("Unknown Variable: %s", t.name.str))
+			errUndefinedVar(t, t.name.str)
 		}
 		return n.Type()
 	case *AssignExpr:
@@ -495,12 +500,12 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		valType := r.resolveLocal(t.value)
 		n, ok := r.CheckScope(t.name.str)
 		if !ok {
-			printErr(t.name, fmt.Sprintf("Missing Variable: %s", t.name.str))
+			errUndefinedVar(t, t.name.str)
 		}
 
 		objType := n.Type()
 		if valType != objType {
-			printErr(t.name, fmt.Sprintf("Mismatched types: %s, %s, %s", objType, valType, "="))
+			nodeError(t, fmt.Sprintf("Mismatched assignment types: %s, %s", objType.name, valType.name))
 		}
 
 		return UnknownType
@@ -530,7 +535,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// TODO: Check that we have the needed variable
 		node, ok := r.CheckScope(t.tok.str)
 		if !ok {
-			printErr(t.tok, fmt.Sprintf("Undefined Variable: %s", t.tok.str))
+			errUndefinedIdent(t, t.tok.str)
 			return UnknownType
 		}
 		t.ty = node.Type()
@@ -577,7 +582,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 		commonType, success = checkLitTypeCast(left, right)
 
 		if !success {
-			printErr(t.op, fmt.Sprintf("Mismatched types: %+v, %s, %+v", left, t.op.str, right))
+			nodeError(t, fmt.Sprintf("Mismatched operator types: %s, %s", left.name, right.name))
 			return UnknownType, false
 		}
 	}
@@ -587,7 +592,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 	case BANGEQUAL: fallthrough
 	case EQUALEQUAL:
 		if !commonType.comparable {
-			printErr(t.op, fmt.Sprintf("Tried to compare incomparable type: %T", t.left))
+			nodeError(t, fmt.Sprintf("Type is not comparable: %s", commonType.name))
 			panic("Tried to compare incomparable types")
 			return UnknownType, false
 		}

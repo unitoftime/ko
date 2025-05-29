@@ -1,3 +1,29 @@
+# TODO
+- [x] ++ --
+- [x] :=
+- [ ] bitshifts: >> <<
+- [ ] bitwise: & | ~ ^
+- [ ] += -=
+- [ ] Global variables whose expression is a function call
+- [ ] Arrays
+- [ ] Pointers
+- [ ] slices
+- [ ] Maps
+- [ ] Switch statements
+- [ ] else if statements
+- [ ] enums -> I think just generate compile time constants
+- [ ] tagged unions -> compile time completion check
+- [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
+- [ ] alloc/free and general memory safety. References? Ownership? Pointers? Nil Checks?
+- [ ] defer (scope based)
+- [ ] Packages and package imports
+- [ ] Closures (how would you enforce memory safety
+- [ ] Address sanitizer: -fsanitize=address
+- [ ] valgrind testing mode
+- [ ] Static analyzers: clang-tidy, cppcheck
+- [ ] Guarded (debug mode) allocator that ensures you dont go out of bounds
+- [ ] Something like a goroutine
+
 # Things I'm unsure about
 - glibc linking vs musl
 - jemalloc vs glibc malloc
@@ -33,3 +59,13 @@ Let people inject c code directly inline to their program, which would be nice f
 - wouldn't I need this regardless for bindings though? like for header only libs? Or maybe just require people to always link their .a?
 
 ## Something like odin #foreign to make bindings against static libs
+
+## Integer size switches in generated code
+```
+#include <stdint.h>
+#if INTPTR_MAX == INT64_MAX
+    // 64-bit
+#elif INTPTR_MAX == INT32_MAX
+    // 32-bit
+#endif
+```

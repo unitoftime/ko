@@ -141,14 +141,24 @@ func TestCallWithStruct() {
 func TestScopeNesting() {
 	var a = 5;
 
+	// {
+	// 	var a = 10;
+	// 	Assert(a == 10)
+	// 	{
+	// 		var a = 15;
+	// 		Assert(a == 15)
+	// 	}
+	// 	Assert(a == 10)
+	// }
+
 	{
-		var a = 10;
-		Assert(a == 10)
+		var b = 10;
+		Assert(b == 10)
 		{
-			var a = 15;
-			Assert(a == 15)
+			var c = 15;
+			Assert(c == 15)
 		}
-		Assert(a == 10)
+		Assert(b == 10)
 	}
 
 	Assert(a == 5)
@@ -162,7 +172,7 @@ func TestScopeNesting() {
 // 	return n + backtraceTest(n - 1)
 // }
 
-// TODO: I think when I do closures I may want to just manually handle them, rather than rely on gcc
+// // TODO: I think when I do closures I may want to just manually handle them, rather than rely on gcc
 // // Note: I think this only works in gcc and isn't standard c
 // func closure() {
 // 	var i = 0

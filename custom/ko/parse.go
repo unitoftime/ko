@@ -5,9 +5,26 @@ import (
 )
 
 // Adapted from: https://github.com/aaronraff/blog-code/blob/master/how-to-write-a-lexer-in-go/lexer.go
-
 func printErr(tok Token, msg string) {
 	fmt.Printf("./%s:%d:%d: %s\n", tok.pos.filename, tok.pos.line, tok.pos.column, msg)
+	panic("AAA")
+}
+
+
+func errUndefinedIdent(n Node, name string) {
+ 	nodeError(n, fmt.Sprintf("Undefined Identifier: %s", name))
+}
+func errUndefinedVar(n Node, name string) {
+ 	nodeError(n, fmt.Sprintf("Undefined Variable: %s", name))
+}
+func errUndefinedType(n Node, name string) {
+ 	nodeError(n, fmt.Sprintf("Undefined Type: %s", name))
+}
+
+
+func nodeError(n Node, msg string) error {
+	p := n.Pos()
+	fmt.Printf("./%s:%d:%d: %s\n", p.filename, p.line, p.column, msg)
 	panic("AAA")
 }
 
@@ -26,11 +43,12 @@ type FileNode struct {
 	nodes []Node
 }
 func (n *FileNode) Pos() Position {
-	return Position{}
+	return Position{filename: n.filename}
 }
 func (n *FileNode) Type() *Type {
 	return UnknownType
 }
+
 type FuncNode struct {
 	pos Position
 	name string
@@ -40,7 +58,7 @@ type FuncNode struct {
 	ty *Type
 }
 func (n *FuncNode) Pos() Position {
-	return Position{}
+	return n.pos
 }
 func (n *FuncNode) Type() *Type {
 	return n.ty
@@ -63,33 +81,36 @@ type ScopeNode struct {
 	Scope *CurlyScope
 }
 func (n *ScopeNode) Pos() Position {
-	return Position{}
+	return n.Scope.Pos()
 }
 func (n *ScopeNode) Type() *Type {
 	return UnknownType
 }
 
 type CurlyScope struct {
+	pos Position
 	nodes []Node
 }
 func (n *CurlyScope) Pos() Position {
-	return Position{}
+	return n.pos
 }
 func (n *CurlyScope) Type() *Type {
 	return UnknownType
 }
 
 type PackageNode struct {
+	pos Position
 	name string
 }
 func (n *PackageNode) Pos() Position {
-	return Position{}
+	return n.pos
 }
 func (n *PackageNode) Type() *Type {
 	return UnknownType
 }
 
 type CommentNode struct {
+	pos Position
 	line string
 }
 func (n *CommentNode) Pos() Position {
@@ -100,11 +121,12 @@ func (n *CommentNode) Type() *Type {
 }
 
 type ReturnNode struct {
+	pos Position
 	expr Node
 	ty *Type
 }
 func (n *ReturnNode) Pos() Position {
-	return Position{}
+	return n.pos
 }
 func (n *ReturnNode) Type() *Type {
 	return n.ty
@@ -116,17 +138,18 @@ type Arg struct {
 	ty *Type
 }
 func (n *Arg) Pos() Position {
-	return Position{}
+	return n.name.pos
 }
 func (n *Arg) Type() *Type {
 	return n.ty
 }
 
 type ArgNode struct {
+	pos Position
 	args []*Arg
 }
 func (n *ArgNode) Pos() Position {
-	return Position{}
+	return n.pos
 }
 func (n *ArgNode) Type() *Type {
 	return UnknownType
@@ -139,7 +162,7 @@ type VarStmt struct {
 	ty *Type
 }
 func (n *VarStmt) Pos() Position {
-	return Position{}
+	return n.name.pos
 }
 func (n *VarStmt) Type() *Type {
 	return n.ty
@@ -171,10 +194,9 @@ func (n *ForStmt) Type() *Type {
 
 type Stmt struct {
 	node Node
-	// ty *Type
 }
 func (n *Stmt) Pos() Position {
-	return Position{}
+	return n.node.Pos()
 }
 func (n *Stmt) Type() *Type {
 	return UnknownType
@@ -188,7 +210,7 @@ type CallExpr struct {
 	ty *Type // Note: This is the type returned by the call
 }
 func (n *CallExpr) Pos() Position {
-	return Position{}
+	return n.callee.Pos()
 }
 func (n *CallExpr) Type() *Type {
 	return n.ty
@@ -200,7 +222,7 @@ type CompLitExpr struct {
 	ty *Type
 }
 func (n *CompLitExpr) Pos() Position {
-	return Position{}
+	return n.callee.Pos()
 }
 func (n *CompLitExpr) Type() *Type {
 	return UnknownType
@@ -212,7 +234,7 @@ type GetExpr struct {
 	ty *Type
 }
 func (n *GetExpr) Pos() Position {
-	return Position{}
+	return n.obj.Pos()
 }
 func (n *GetExpr) Type() *Type {
 	return n.ty
@@ -225,7 +247,7 @@ type SetExpr struct {
 	ty *Type
 }
 func (n *SetExpr) Pos() Position {
-	return Position{}
+	return n.obj.Pos()
 }
 func (n *SetExpr) Type() *Type {
 	return n.ty
@@ -237,7 +259,7 @@ type LogicalExpr struct {
 	right Node
 }
 func (n *LogicalExpr) Pos() Position {
-	return Position{}
+	return n.left.Pos()
 }
 func (n *LogicalExpr) Type() *Type {
 	return BoolType // TODO: Is this always the case?
@@ -248,7 +270,7 @@ type AssignExpr struct {
 	value Node
 }
 func (n *AssignExpr) Pos() Position {
-	return Position{}
+	return n.name.pos
 }
 func (n *AssignExpr) Type() *Type {
 	return UnknownType
@@ -260,7 +282,7 @@ type BinaryExpr struct {
 	ty *Type
 }
 func (n *BinaryExpr) Pos() Position {
-	return Position{}
+	return n.op.pos
 }
 func (n *BinaryExpr) Type() *Type {
 	return n.ty
@@ -272,7 +294,7 @@ type PostfixStmt struct {
 	// ty *Type
 }
 func (n *PostfixStmt) Pos() Position {
-	return Position{}
+	return n.op.pos
 }
 func (n *PostfixStmt) Type() *Type {
 	return UnknownType
@@ -285,7 +307,7 @@ type UnaryExpr struct {
 	ty *Type
 }
 func (n *UnaryExpr) Pos() Position {
-	return Position{}
+	return n.op.pos
 }
 func (n *UnaryExpr) Type() *Type {
 	return n.ty
@@ -297,7 +319,7 @@ type LitExpr struct {
 	ty *Type
 }
 func (n *LitExpr) Pos() Position {
-	return Position{}
+	return n.tok.pos
 }
 func (n *LitExpr) Type() *Type {
 	return n.ty
@@ -308,7 +330,7 @@ type IdentExpr struct {
 	ty *Type
 }
 func (n *IdentExpr) Pos() Position {
-	return Position{}
+	return n.tok.pos
 }
 func (n *IdentExpr) Type() *Type {
 	return n.ty
@@ -319,7 +341,7 @@ type GroupingExpr struct {
 	ty *Type
 }
 func (n *GroupingExpr) Pos() Position {
-	return Position{}
+	return n.Node.Pos()
 }
 func (n *GroupingExpr) Type() *Type {
 	return n.ty
@@ -476,6 +498,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		tokens.Consume(SEMI)
 
 		return &PackageNode{
+			pos: next.pos,
 			name: next.str,
 		}
 	case TYPE:
@@ -484,7 +507,6 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		return p.ParseFuncNode(globalScope)
 
 	case RETURN:
-		tokens.Next()
 		return p.ParseReturnNode(tokens)
 	// case TYPE: // TODO:
 	case VAR:
@@ -504,7 +526,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		return &ScopeNode{p.ParseCurlyScope()}
 	case LINECOMMENT:
 		next := tokens.Next() // Discard
-		return &CommentNode{next.str}
+		return &CommentNode{next.pos, next.str}
 	case SEMI:
 		// tokens.Next() // Discard
 		return nil
@@ -587,8 +609,8 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 		case LPAREN:
 			returns = p.ParseArgNode()
 		case IDENT:
-			tokens.Next()
-			args := ArgNode{make([]*Arg, 0)}
+			tok := tokens.Next()
+			args := ArgNode{tok.pos, make([]*Arg, 0)}
 			args.args = append(args.args, &Arg{
 				name: Token{}, // TODO
 				kind: next,
@@ -622,12 +644,14 @@ func (p *Parser) ParseCurlyScope() *CurlyScope {
 
 	body := p.ParseTil(RBRACE, false)
 
-	return &CurlyScope{body}
+	return &CurlyScope{next.pos, body}
 }
 
 
 func (p *Parser) ParseReturnNode(tokens *Tokens) Node {
+	tok := tokens.Next()
 	r := &ReturnNode{
+		pos: tok.pos,
 		expr: p.ParseExpression(),
 	}
 	return r
@@ -641,7 +665,7 @@ func (p *Parser) ParseArgNode() *ArgNode {
 		panic(parseError(LPAREN, next))
 	}
 
-	args := &ArgNode{make([]*Arg, 0)}
+	args := &ArgNode{next.pos, make([]*Arg, 0)}
 	for {
 		if tokens.Peek().token == RPAREN { break }
 

@@ -104,9 +104,11 @@ func compile(inputFile string) {
 
 	// FLAGS=-g ${FLAG_BASIC} ${FLAG_UB} ${FLAG_STRICT}
 
+	cc := "gcc"
 	args := []string{
 		"./out/main.c",
 		"-g",
+		"-std=c11",
 
 		// Flags
 		"-Wall", "-Wextra", "-Werror",
@@ -119,7 +121,7 @@ func compile(inputFile string) {
 	}
 
 	// Build command
-	cc := "tcc"
+
 	err = localCmd("./", cc, args...)
 	if err != nil { panic(err) }
 }

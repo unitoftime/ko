@@ -66,35 +66,35 @@ int __mainRet__ = 0;
 typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 #line 3 "./tests/test.k"
-int main ();
+int main (void);
 #line 24 "./tests/test.k"
-void TestHelloWorld ();
+void TestHelloWorld (void);
 #line 28 "./tests/test.k"
-void TestVariablesAndArithmetic ();
+void TestVariablesAndArithmetic (void);
 #line 48 "./tests/test.k"
-void TestUnaryOperators ();
+void TestUnaryOperators (void);
 #line 59 "./tests/test.k"
 uint64_t fib (uint64_t n );
 #line 66 "./tests/test.k"
-void TestFib ();
+void TestFib (void);
 #line 77 "./tests/test.k"
-void TestStructs ();
+void TestStructs (void);
 #line 84 "./tests/test.k"
-void TestForLoop ();
+void TestForLoop (void);
 #line 95 "./tests/test.k"
-void TestForLoopSimple ();
+void TestForLoopSimple (void);
 #line 105 "./tests/test.k"
-void TestIfStatement ();
+void TestIfStatement (void);
 #line 114 "./tests/test.k"
-void TestGlobalVariable ();
+void TestGlobalVariable (void);
 #line 120 "./tests/test.k"
-void TestGlobalVariableStruct ();
+void TestGlobalVariableStruct (void);
 #line 124 "./tests/test.k"
 Point reverse (Point val );
 #line 130 "./tests/test.k"
-void TestCallWithStruct ();
+void TestCallWithStruct (void);
 #line 141 "./tests/test.k"
-void TestScopeNesting ();
+void TestScopeNesting (void);
 struct Point {
 	int X;
 	int Y;
@@ -108,7 +108,7 @@ int globA = 5;
 Point globPoint = { 2, 3 };
 // package main
 #line 3 "./tests/test.k"
-int main () {
+int main (void) {
 	TestHelloWorld();
 	TestVariablesAndArithmetic();
 	TestUnaryOperators();
@@ -127,11 +127,11 @@ int main () {
 return __mainRet__;
 }
 #line 24 "./tests/test.k"
-void TestHelloWorld () {
+void TestHelloWorld (void) {
 	printf("Hello World\n");
 }
 #line 28 "./tests/test.k"
-void TestVariablesAndArithmetic () {
+void TestVariablesAndArithmetic (void) {
 	int a = 10;
 	int b = 20;
 	int c = ((a * b) + 5);
@@ -148,7 +148,7 @@ void TestVariablesAndArithmetic () {
 	(a++);
 }
 #line 48 "./tests/test.k"
-void TestUnaryOperators () {
+void TestUnaryOperators (void) {
 	int x = 5;
 	Assert((x == 5));
 	Assert(((-x) == (-5)));
@@ -166,20 +166,20 @@ uint64_t fib (uint64_t n ) {
 	return ((fib((n - 2)) + fib((n - 1))));
 }
 #line 66 "./tests/test.k"
-void TestFib () {
+void TestFib (void) {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
 #line 77 "./tests/test.k"
-void TestStructs () {
+void TestStructs (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
 	Assert((p1.X == p2.Y));
 	Assert((p1.Y == p2.X));
 }
 #line 84 "./tests/test.k"
-void TestForLoop () {
+void TestForLoop (void) {
 	int num = 20;
 	int count = 0;
 	for (int i = 0; (i < num); i = (i + 1)) {
@@ -190,7 +190,7 @@ void TestForLoop () {
 	Assert((count == num));
 }
 #line 95 "./tests/test.k"
-void TestForLoopSimple () {
+void TestForLoopSimple (void) {
 	int num = 20;
 	int count = 0;
 	for (int i = 0; (i < num); (i++)) {
@@ -200,7 +200,7 @@ void TestForLoopSimple () {
 	Assert((count == num));
 }
 #line 105 "./tests/test.k"
-void TestIfStatement () {
+void TestIfStatement (void) {
 	if ((5 < 10)) {
 		Assert((1 == 1));
 	} else {
@@ -208,12 +208,12 @@ void TestIfStatement () {
 	};
 }
 #line 114 "./tests/test.k"
-void TestGlobalVariable () {
+void TestGlobalVariable (void) {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
 #line 120 "./tests/test.k"
-void TestGlobalVariableStruct () {
+void TestGlobalVariableStruct (void) {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }
 #line 124 "./tests/test.k"
@@ -224,7 +224,7 @@ Point reverse (Point val ) {
 	return (val);
 }
 #line 130 "./tests/test.k"
-void TestCallWithStruct () {
+void TestCallWithStruct (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ 2, 1 };
 	Point p3 = reverse(p1);
@@ -234,17 +234,26 @@ void TestCallWithStruct () {
 	Assert((__ko_Point_equality(p1, p4) == true));
 }
 #line 141 "./tests/test.k"
-void TestScopeNesting () {
+void TestScopeNesting (void) {
 	int a = 5;
+	;
+	;
+	;
+	;
+	;
+	;
+	;
+	;
+	;
 	{
-		int a = 10;
-		Assert((a == 10));
+		int b = 10;
+		Assert((b == 10));
 		{
-			int a = 15;
-			Assert((a == 15));
+			int c = 15;
+			Assert((c == 15));
 		}
 		;
-		Assert((a == 10));
+		Assert((b == 10));
 	}
 	;
 	Assert((a == 5));
