@@ -68,7 +68,7 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		if !ok {
 			printErr(t.tok, fmt.Sprintf("Unknown Variable: %s", t.tok.str))
 		}
-		fmt.Println("AAA:", n)
+		Println("AAA:", n)
 		strType := n.Type()
 
 		structNode, ok := r.CheckScope(strType.name)
@@ -173,9 +173,9 @@ func (r *Resolver) Resolve(result ParseResult) {
 	// 1. register globally scoped things but dont do any resolving of types
 	// 2. do local resolving for *everything* including global, but fallback to global lookups for things as needed. Then if something was already registered globally you dont have to reregister it in global scope (or maybe just ignore registering global scoped things, but just do their type checking)
 
-	fmt.Println("--- Global ---")
+	Println("--- Global ---")
 	r.RegisterGlobal(result)
-	fmt.Println("--- Local ---")
+	Println("--- Local ---")
 	r.ResolveLocal(result.file)
 }
 
@@ -195,21 +195,21 @@ func (r *Resolver) RegisterGlobal(result ParseResult) {
 
 	// Resolve
 	for i := range result.typeList {
-		fmt.Println("Resolve:", result.typeList[i])
+		Println("Resolve:", result.typeList[i])
 		r.resolveLocal(result.typeList[i])
 	}
 
 	for i := range result.fnList {
-		fmt.Println("Resolve:", result.fnList[i])
+		Println("Resolve:", result.fnList[i])
 		// r.resolveLocal(result.fnList[i])
 		r.resolveFuncNodePrototype(result.fnList[i])
 	}
 
 	for i := range result.varList {
-		fmt.Println("ResolveVarList:", result.varList[i])
+		Println("ResolveVarList:", result.varList[i])
 		ty := r.resolveLocal(result.varList[i])
-		fmt.Println("ResolveVarList.Finish:", *ty)
-		fmt.Println(result.varList[i])
+		Println("ResolveVarList.Finish:", *ty)
+		Println(result.varList[i])
 	}
 }
 
@@ -224,7 +224,7 @@ func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 			printErr(Token{pos: t.pos}, fmt.Sprintf("Unknown Type: %s", retName))
 		}
 		t.ty = r.resolveLocal(retNode)
-		fmt.Println("ResolveGlobal:", t, t.ty)
+		Println("ResolveGlobal:", t, t.ty)
 	}
 }
 
@@ -308,7 +308,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		if t.ty != UnknownType {
 			return t.ty
 		}
-		fmt.Println("StructNode:", t)
+		Println("StructNode:", t)
 		for _, field := range t.fields {
 			t.ty = r.resolveLocal(field)
 		}
@@ -319,7 +319,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 		return t.ty
 	case *FuncNode:
-		fmt.Println("FuncNode:", t)
+		Println("FuncNode:", t)
 
 		// Note: This only handles function body, the function type gets resolved earlier
 		m := r.PushScope()
@@ -327,14 +327,14 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 		if t.arguments != nil {
 			for _, arg := range t.arguments.args {
-				fmt.Println("t.arguments.args")
+				Println("t.arguments.args")
 				r.resolveLocal(arg)
 				m.AddIdent(arg.name.str, arg)
 			}
 		}
 		if t.returns != nil {
 			for _, ret := range t.returns.args {
-				fmt.Println("t.returns.args", ret.name.str)
+				Println("t.returns.args", ret.name.str)
 				r.resolveLocal(ret)
 				if ret.name.str != "" {
 					m.AddIdent(ret.name.str, ret)
@@ -342,18 +342,18 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 			}
 		}
 
-		fmt.Println("t.body")
+		Println("t.body")
 		r.resolveLocal(t.body)
 
 		r.PopScope()
 
 		return t.ty
 	case *Stmt:
-		fmt.Println("Stmt:", t)
+		Println("Stmt:", t)
 		r.resolveLocal(t.node)
 		return UnknownType
 	case *ForStmt:
-		fmt.Println("ForStmt:", t)
+		Println("ForStmt:", t)
 		// TODO: Invalid unless in function
 		r.PushScope()
 		r.resolveLocal(t.init)
@@ -364,7 +364,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		r.PopScope()
 
 	case *IfStmt:
-		fmt.Println("IfStmt:", t)
+		Println("IfStmt:", t)
 		// TODO: Invalid unless in function
 		r.resolveLocal(t.cond)
 
@@ -380,7 +380,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 
 	case *ScopeNode:
-		fmt.Println("ScopeNode")
+		Println("ScopeNode")
 		r.PushScope()
 		ty := r.resolveLocal(t.Scope)
 		r.PushScope()
@@ -388,29 +388,29 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return ty
 
 	case *CurlyScope:
-		fmt.Println("CurlyScope")
+		Println("CurlyScope")
 		for i := range t.nodes {
-			fmt.Printf("CurlyScopeNode: %T\n", t.nodes[i])
+			Printf("CurlyScopeNode: %T\n", t.nodes[i])
 			r.resolveLocal(t.nodes[i])
 		}
 
 	case *VarStmt:
-		fmt.Printf("VarStmt: %s, %T +%v\n", t.name.str, t.initExpr, t.initExpr)
+		Printf("VarStmt: %s, %T +%v\n", t.name.str, t.initExpr, t.initExpr)
 		t.ty = r.resolveLocal(t.initExpr)
 
 		if r.LocalScope() {
 			r.Scope().AddIdent(t.name.str, t) // For global we register it before
 		}
-		fmt.Printf("VarStmt.Typed: %+v\n", t)
+		Printf("VarStmt.Typed: %+v\n", t)
 		return t.ty
 
 	case *Arg:
-		fmt.Println("Resolve Arg:", t)
+		Println("Resolve Arg:", t)
 		def, ok := r.CheckScope(t.kind.str)
 		if !ok {
 			printErr(t.name, fmt.Sprintf("Unknown Type: %s", t.kind.str))
 		}
-		fmt.Println("Resolve Arg... Def:", def)
+		Println("Resolve Arg... Def:", def)
 		t.ty = def.Type()
 
 		return t.ty
@@ -429,7 +429,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// }
 
 	case *ReturnNode:
-		fmt.Println("ReturnNode:", t)
+		Println("ReturnNode:", t)
 		t.ty = r.resolveLocal(t.expr)
 		// TODO: Check to make sure return type matches func return type or blank if void
 		currentFuncScope, ok := r.GetFuncScope()
@@ -456,7 +456,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return t.ty
 
 	case *CallExpr:
-		fmt.Println("CallExpr:", t)
+		Println("CallExpr:", t)
 		callTy := r.resolveLocal(t.callee) // TODO: How does this work if it returns a call target?
 
 		for i := range t.args {
@@ -465,14 +465,14 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		t.ty = callTy
 		return t.ty
 
-		// fmt.Println("CallExpr:", callTy)
+		// Println("CallExpr:", callTy)
 		// // n, ok := r.CheckScope(t.callee)
-		// // fmt.Println("n, ok", n, ok)
+		// // Println("n, ok", n, ok)
 		// // TODO: This is the callee type, but then need to look it up and find what type it returns
 		// return "TODO"
 
 	case *GetExpr:
-		fmt.Println("GetExpr:", t)
+		Println("GetExpr:", t)
 		// t.ty = r.resolveLocal(t.obj)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
@@ -482,7 +482,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		t.ty = n.Type()
 		return t.ty
 	case *SetExpr:
-		fmt.Println("SetExpr:", t)
+		Println("SetExpr:", t)
 		t.ty = r.resolveLocal(t.obj)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
@@ -491,7 +491,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 		return n.Type()
 	case *AssignExpr:
-		fmt.Println("AssignExpr:", t)
+		Println("AssignExpr:", t)
 		valType := r.resolveLocal(t.value)
 		n, ok := r.CheckScope(t.name.str)
 		if !ok {
@@ -506,7 +506,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return UnknownType
 
 	case *BinaryExpr:
-		fmt.Println("BinaryExpr:", t)
+		Println("BinaryExpr:", t)
 		resultType, success := r.checkBinaryExpr(t)
 		if !success {
 			// printErr(t.op, fmt.Sprintf("Mismatched types: %s, %s, %s", lType, t.op.str, rType))
@@ -520,13 +520,13 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		r.resolveLocal(t.left)
 		return UnknownType
 	case *UnaryExpr:
-		fmt.Println("UnaryExpr:", t)
+		Println("UnaryExpr:", t)
 		// TODO: right now we have no casting unary types, but in the futures those would change the type. so currently the unary type is always just the type of the right node
 		t.ty = r.resolveLocal(t.right)
 		return t.ty
 
 	case *IdentExpr:
-		fmt.Println("IdentExpr:", t)
+		Println("IdentExpr:", t)
 		// TODO: Check that we have the needed variable
 		node, ok := r.CheckScope(t.tok.str)
 		if !ok {
@@ -534,25 +534,25 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 			return UnknownType
 		}
 		t.ty = node.Type()
-		fmt.Println("IdentExpr.Type:", t)
+		Println("IdentExpr.Type:", t)
 		// t.ty = r.resolveLocal(node)
 		return t.ty
 
 	case *CompLitExpr:
-		fmt.Println("CompLitExpr:", t)
+		Println("CompLitExpr:", t)
 		t.ty = r.resolveLocal(t.callee)
 
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		fmt.Println("CompLitExpr.Typed:", t)
+		Println("CompLitExpr.Typed:", t)
 		return t.ty
 
 	case *GroupingExpr:
 		t.ty = r.resolveLocal(t.Node)
 		return t.ty
 	case *LitExpr:
-		fmt.Println("LitExpr:", t)
+		Println("LitExpr:", t)
 		return t.Type()
 		// t.ty = typeOf(t)
 		// return t.ty
@@ -663,13 +663,13 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 func checkLitTypeCast(left, right *Type) (*Type, bool) {
 	ok := tryCast(left, right)
 	if ok {
-		// fmt.Println("TryLitTypeCast", right, ok)
+		// Println("TryLitTypeCast", right, ok)
 		return right, ok
 	}
 
 	ok = tryCast(right, left)
 	if ok {
-		// fmt.Println("TryLitTypeCast", left,  ok)
+		// Println("TryLitTypeCast", left,  ok)
 		return left, ok
 	}
 

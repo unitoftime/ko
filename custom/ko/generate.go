@@ -53,8 +53,8 @@ func returnArgsToString(node Node) string {
 	if len(argNode.args) != 1 {
 		panic("only supporting single return types")
 	}
-	fmt.Printf("returnArgsToString: %+v\n", argNode)
-	fmt.Printf("returnArgsToString: %T\n", argNode.args[0])
+	Printf("returnArgsToString: %+v\n", argNode)
+	Printf("returnArgsToString: %T\n", argNode.args[0])
 	return typeStr(argNode.args[0].ty)
 }
 
@@ -235,7 +235,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add("}")
 	case *VarStmt:
 		if !t.global {
-			fmt.Println("VarStmt:", *t)
+			Println("VarStmt:", *t)
 			typeStr := typeStr(t.ty)
 
 			buf.
@@ -303,7 +303,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *BinaryExpr:
-		fmt.Println(t.left, t.right)
+		Println(t.left, t.right)
 		if t.left.Type().isStruct || t.right.Type().isStruct {
 			ty := t.left.Type()
 			buf.Add("(")

@@ -4,6 +4,7 @@
 - stack unwinding <- impossible? maybe works with libunwind?
   - libunwind
 - backtrace() <- platform dependent
+  - libunwind
 
 # Just some ideas
 ## arena { ... } scopes

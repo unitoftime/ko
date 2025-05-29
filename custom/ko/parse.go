@@ -458,7 +458,7 @@ func (p *Parser) ParseTil(stopToken TokenType, globalScope bool) []Node {
 			if next.token != SEMI {
 				panic(parseError(stopToken, next))
 			} else {
-				fmt.Println("-------------------------semi", p.tokens.Prev())
+				Println("-------------------------semi", p.tokens.Prev())
 			}
 		}
 	}
@@ -496,6 +496,9 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 	case FOR:
 		return p.forStatement()
 	case IDENT:
+		if globalScope {
+			printErr(next, fmt.Sprintf("Unexpected identifier in global scope: %s", next.str))
+		}
 		return p.parseStatement()
 	case LBRACE:
 		return &ScopeNode{p.ParseCurlyScope()}
@@ -717,6 +720,9 @@ func (p *Parser) parseStatement() Node {
 		case INC: fallthrough
 		case DEC:
 			return p.postfixStatement()
+
+		case WALRUS:
+			return p.varDecl(false)
 		}
 	}
 
@@ -736,6 +742,9 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	if tokens.Peek().token == EQUAL {
 		tokens.Next()
 		initExpr = p.ParseExpression()
+	} else if tokens.Peek().token == WALRUS {
+		tokens.Next()
+		initExpr = p.ParseExpression()
 	}
 
 	tokens.Consume(SEMI)
@@ -751,7 +760,6 @@ func (p *Parser) postfixStatement() Node {
 	tok := p.Consume(IDENT)
 	op := p.Next()
 	ident := &IdentExpr{tok, UnknownType}
-	p.Consume(SEMI)
 	return &PostfixStmt{ident, op}
 }
 
@@ -784,8 +792,7 @@ func (p *Parser) forStatement() Node {
 	} else if (p.tokens.Match(VAR)) {
 		init = p.varDecl(false)
 	} else {
-		init = p.ParseExpression()
-		p.Consume(SEMI)
+		init = p.parseStatement()
 	}
 
 	var cond Node

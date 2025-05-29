@@ -7,6 +7,7 @@ func main() {
 	TestFib()
 	TestStructs()
 	TestForLoop()
+	TestForLoopSimple()
 	TestIfStatement()
 	TestGlobalVariable()
 	TestGlobalVariableStruct()
@@ -26,8 +27,8 @@ func TestHelloWorld() {
 
 func TestVariablesAndArithmetic() {
 	var a = 10
-	var b = 20
-	var c = a * b + 5
+	b := 20
+	c := a * b + 5
 	Assert(c == 205)
 
 	a++
@@ -85,6 +86,16 @@ func TestForLoop() {
 	var count = 0
 	for var i = 0; i < num; i = i + 1 {
 		// printf("Fib %d: %d\n", i, fib(i))
+		Assert(i == count)
+		count = count + 1
+	}
+	Assert(count == num)
+}
+
+func TestForLoopSimple() {
+	var num = 20
+	var count = 0
+	for i := 0; i < num; i++ {
 		Assert(i == count)
 		count = count + 1
 	}
