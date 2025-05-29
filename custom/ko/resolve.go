@@ -9,12 +9,12 @@ import (
 type Scope struct {
 	funcNode *FuncNode
 	ident map[string]Node // A map of identifiers for the scope
-	types map[string]Node // A map of types for the scope
+	// types map[string]Node // A map of types for the scope
 }
 func NewScope() *Scope{
 	return &Scope{
 		ident: make(map[string]Node),
-		types: make(map[string]Node),
+		// types: make(map[string]Node),
 	}
 }
 func (s *Scope) AddIdent(name string, n Node) {
@@ -82,9 +82,9 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		}
 		strType := n.Type()
 
-		structNode, ok := r.CheckScope(strType.name)
+		structNode, ok := r.CheckScope(strType.Name())
 		if !ok {
-			errUndefinedType(structNode, strType.name)
+			errUndefinedType(structNode, strType.Name())
 		}
 		return getField(structNode, field)
 
@@ -165,12 +165,13 @@ func (r *Resolver) PopScope() {
 
 func NewResolver() *Resolver {
 	builtin := NewScope()
-	builtin.AddIdent("printf", &BuiltinNode{&Type{"void", false, false}})
-	builtin.AddIdent("Assert", &BuiltinNode{&Type{"void", false, false}})
+	// TODO: FuncTypes
+	builtin.AddIdent("printf", &BuiltinNode{&BasicType{"void", false, false}})
+	builtin.AddIdent("Assert", &BuiltinNode{&BasicType{"void", false, false}})
 
 	// Add builtin types
-	builtin.AddIdent("u64", &BuiltinNode{&Type{"u64", true, false}})
-	builtin.AddIdent("int", &BuiltinNode{&Type{"int", true, false}})
+	builtin.AddIdent("u64", &BuiltinNode{&BasicType{"u64", true, false}})
+	builtin.AddIdent("int", &BuiltinNode{&BasicType{"int", true, false}})
 
 	return &Resolver{
 		builtin: builtin,
@@ -219,7 +220,7 @@ func (r *Resolver) RegisterGlobal(result ParseResult) {
 	for i := range result.varList {
 		Println("ResolveVarList:", result.varList[i])
 		ty := r.resolveLocal(result.varList[i])
-		Println("ResolveVarList.Finish:", *ty)
+		Println("ResolveVarList.Finish:", ty)
 		Println(result.varList[i])
 	}
 }
@@ -229,7 +230,8 @@ func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 	if t.returns == nil || len(t.returns.args) == 0 {
 		t.ty = VoidType
 	} else {
-		retName := t.returns.args[0].kind.str
+		r.resolveLocal(t.returns.args[0])
+		retName := t.returns.args[0].typeNode.Name()
 		retNode, ok := r.CheckScope(retName)
 		if !ok {
 			errUndefinedType(t, retName)
@@ -295,7 +297,7 @@ func (r *Resolver) registerGlobal(n Node) {
 
 // Returns the type of that node, if untyped returns ""
 // For functions: returns the type that the node expression returns
-func (r *Resolver) resolveLocal(node Node) *Type {
+func (r *Resolver) resolveLocal(node Node) Type {
 	// if node.Type() != nil {
 	// 	return node.Type()
 	// }
@@ -313,12 +315,16 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		if t.ty != UnknownType {
 			return t.ty
 		}
+
 		Println("StructNode:", t)
-		for _, field := range t.fields {
+		fields := make([]Type, len(t.fields))
+		for i, field := range t.fields {
 			t.ty = r.resolveLocal(field)
+			fields[i] = t.ty
 		}
-		// TODO: Build a struct type that would have all the fields of the structs and their types
-		t.ty = &Type{t.ident.str, true, true}
+
+		t.ty = &StructType{t.ident.str, fields}
+
 		if r.LocalScope() {
 			r.AddIdent(t.ident.str, t)
 		}
@@ -401,7 +407,11 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 	case *VarStmt:
 		Printf("VarStmt: %s, %T +%v\n", t.name.str, t.initExpr, t.initExpr)
-		t.ty = r.resolveLocal(t.initExpr)
+		if t.typeSpec != nil {
+			t.ty = r.resolveLocal(t.typeSpec)
+		} else if t.initExpr != nil {
+			t.ty = r.resolveLocal(t.initExpr)
+		}
 
 		if r.LocalScope() {
 			r.AddIdent(t.name.str, t) // For global we register it before
@@ -411,27 +421,21 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 
 	case *Arg:
 		Println("Resolve Arg:", t)
-		def, ok := r.CheckScope(t.kind.str)
+		r.resolveLocal(t.typeNode)
+		def, ok := r.CheckScope(t.typeNode.Name())
 		if !ok {
-			errUndefinedType(t, t.kind.str)
+			errUndefinedType(t, t.typeNode.Name())
 		}
 		Println("Resolve Arg... Def:", def)
 		t.ty = def.Type()
 
 		return t.ty
 	case *ArgNode:
-		panic("ARGNODE")
-		// TODO: Are these just for func args? Maybe add to global scoping check
 
-		// for i := range t.args {
-		// 	buf.Add(t.args[i].kind).
-		// 		Add(" ").
-		// 		Add(t.args[i].name).
-		// 		Add(" ")
-		// 	if i < len(t.args)-1 {
-		// 		buf.Add(", ")
-		// 	}
-		// }
+		// TODO: Are these just for func args? Maybe add to global scoping check
+		for _, a := range t.args {
+			r.resolveLocal(a)
+		}
 
 	case *ReturnNode:
 		Println("ReturnNode:", t)
@@ -504,8 +508,8 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		}
 
 		objType := n.Type()
-		if valType != objType {
-			nodeError(t, fmt.Sprintf("Mismatched assignment types: %s, %s", objType.name, valType.name))
+		if tryCast(valType, objType) {
+			nodeError(t, fmt.Sprintf("Mismatched assignment types: %s, %s", objType.Name(), valType.Name()))
 		}
 
 		return UnknownType
@@ -525,7 +529,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		rType := r.resolveLocal(t.initExpr)
 
 		if lType != rType {
-			nodeError(t, fmt.Sprintf("Mismatched types: %s, %s", lType.name, rType.name))
+			nodeError(t, fmt.Sprintf("Mismatched types: %s, %s", lType.Name(), rType.Name()))
 		}
 
 		return UnknownType
@@ -536,8 +540,24 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		return UnknownType
 	case *UnaryExpr:
 		Println("UnaryExpr:", t)
-		// TODO: right now we have no casting unary types, but in the futures those would change the type. so currently the unary type is always just the type of the right node
+
+		// TODO: Some unary operators may modify the type
 		t.ty = r.resolveLocal(t.right)
+
+		switch t.op.token {
+		case MUL:
+			// Dereferencing a pointer
+			ptr, ok := t.ty.(*PointerType)
+			if !ok {
+				nodeError(t, "must be a pointer to dereference")
+			}
+			t.ty = ptr.base
+		case AND:
+			// getting an address of an object
+			// TODO: Check t.ty must be addressable
+			t.ty = &PointerType{t.ty}
+		}
+
 		return t.ty
 
 	case *IdentExpr:
@@ -573,6 +593,13 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		// return t.ty
 	case *BuiltinNode:
 		return t.ty
+	case *TypeNode:
+		t.ty = r.ResolveTypeNodeExpr(t.node)
+		if t.ty == nil {
+			panic("FAILED TO RESOLVE")
+		}
+		return t.ty
+
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
 	}
@@ -581,7 +608,7 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 }
 
 // Returns the resulting type of the binary expression, and bool if the type check was ok
-func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
+func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (Type, bool) {
 	left := r.resolveLocal(t.left)
 	right := r.resolveLocal(t.right)
 
@@ -592,7 +619,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 		commonType, success = checkLitTypeCast(left, right)
 
 		if !success {
-			nodeError(t, fmt.Sprintf("Mismatched operator types: %s, %s", left.name, right.name))
+			nodeError(t, fmt.Sprintf("Mismatched operator types: %s, %s", left.Name(), right.Name()))
 			return UnknownType, false
 		}
 	}
@@ -601,8 +628,8 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 	// Comparable
 	case BANGEQUAL: fallthrough
 	case EQUALEQUAL:
-		if !commonType.comparable {
-			nodeError(t, fmt.Sprintf("Type is not comparable: %s", commonType.name))
+		if !isComparable(commonType) {
+			nodeError(t, fmt.Sprintf("Type is not comparable: %s", commonType.Name()))
 			panic("Tried to compare incomparable types")
 			return UnknownType, false
 		}
@@ -675,7 +702,7 @@ func (r *Resolver) checkBinaryExpr(t *BinaryExpr) (*Type, bool) {
 
 // Check if the left or right side can be type cast to the other from a literal to a concrete
 // Returns the resulting concrete type and true if successful, else returns false
-func checkLitTypeCast(left, right *Type) (*Type, bool) {
+func checkLitTypeCast(left, right Type) (Type, bool) {
 	ok := tryCast(left, right)
 	if ok {
 		// Println("TryLitTypeCast", right, ok)
@@ -689,4 +716,72 @@ func checkLitTypeCast(left, right *Type) (*Type, bool) {
 	}
 
 	return UnknownType, false
+}
+
+func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
+	if n.Type() != nil {
+		return n.Type()
+	}
+
+	switch t := n.(type) {
+	case *UnaryExpr:
+		t.ty = r.ResolveTypeNodeExpr(t.right)
+
+		// Note: Some unary operators modify the type
+		switch t.op.token {
+		case MUL:
+			// It is a pointer
+			t.ty = &PointerType{t.ty}
+		// case AND:
+			// TODO: If you ever do reference types like c++
+		}
+
+		return t.ty
+
+	case *IdentExpr:
+		node, ok := r.CheckScope(t.tok.str)
+		if !ok {
+			errUndefinedIdent(t, t.tok.str)
+			panic("AAA")
+			return UnknownType
+		}
+
+		if !r.isTypedef(node) {
+			errIdentMustBeAType(node, t.tok.str)
+			panic("Must be a type!") // TODO: Improve error msg
+		}
+
+		t.ty = node.Type()
+		fmt.Println("TYPETYPETYPE: ", node.Type())
+
+		return t.ty
+
+	default:
+		panic(fmt.Sprintf("ResolveTypeNodeExpr: Unknown NodeType: %T", t))
+	}
+}
+
+// Returns true if the node is a typedef of some sort
+func (r *Resolver) isTypedef(n Node) bool {
+	// TODO: Add others if needed
+	switch  n.(type) {
+	case *StructNode:
+		return true
+	case *BuiltinNode:
+		// TODO: This isn't right, we technically need to see if the builtin type returned is a builtin type like an int or a u64
+		return true
+	}
+	return false
+}
+
+// Returns true if the type is comparable
+func isComparable(ty Type) bool {
+	// TODO: Add others if needed
+	switch t := ty.(type) {
+	case *BasicType:
+		return t.comparable
+	case *StructType:
+		return true
+	}
+	return false
 }

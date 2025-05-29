@@ -1,8 +1,34 @@
 package main
 
-// TODO: I think every type needs to just be a nil pointer in every node, and then it gets computed as I walk through the resolve. and has information, like what the underlying type is, and if its comparable, and little bits like that. Obviously things like structs and funcs have that all predeclared, then expressions i kinda just walk through to see what matches what
-// type Type string
-type Type struct {
+type Type interface {
+	Underlying() Type
+	Name() string // Returns a unique name for this type
+}
+
+type StructType struct {
+	name string
+	fields []Type
+}
+
+func (t *StructType) Underlying() Type {
+	return t
+}
+func (t *StructType) Name() string {
+	return t.name
+}
+
+type PointerType struct {
+	base Type
+}
+
+func (t *PointerType) Underlying() Type {
+	return t
+}
+func (t *PointerType) Name() string {
+	return "*"+t.base.Name()
+}
+
+type BasicType struct {
 	name string // The name of the type
 
 	// General Type information
@@ -10,8 +36,16 @@ type Type struct {
 	isStruct bool
 }
 
+func (t *BasicType) Underlying() Type {
+	return t
+}
+
+func (t *BasicType) Name() string {
+	return t.name
+}
+
 var (
-	BoolType = &Type{"bool", true, false}
+	BoolType = &BasicType{"bool", true, false}
 )
 
 // type Type interface {
@@ -20,7 +54,25 @@ var (
 // }
 
 // Tries to cast type A to type B
-func tryCast(a, b *Type) bool {
+func tryCast(a, b Type) bool {
+	switch aa := a.(type) {
+	case *PointerType:
+		bb, ok := b.(*PointerType)
+		if !ok { return false }
+
+		// Try to cast with the pointer element type
+		tryCast(aa.base, bb.base)
+
+	case *BasicType:
+		bb, ok := b.(*BasicType)
+		if !ok { return false }
+		return tryBasicTypeCast(aa, bb)
+	}
+
+	return false
+}
+
+func tryBasicTypeCast(a, b *BasicType) bool {
 	switch a {
 	case IntLitType:
 		_, ok := intLitCast[b.name]
@@ -98,15 +150,15 @@ const StringLitName = "untypedString"
 const BoolLitName = "untypedBool"
 
 var (
-	UnknownType *Type = nil
-	VoidType *Type = &Type{"void", false, false} // TODO: Comparability?
+	UnknownType Type = nil
+	VoidType = &BasicType{"void", false, false} // TODO: Comparability?
 
 	// These are literal types that can be dynamically resolved to whatever is needed
 	// TODO: UntypedBool,Int,Rune,Float,Complex,String,Nil?
-	BoolLitType *Type = &Type{BoolLitName, true, false}
-	IntLitType *Type = &Type{IntLitName, true, false}
-	FloatLitType *Type = &Type{FloatLitName, true, false}
-	StringLitType *Type = &Type{StringLitName, true, false}
+	BoolLitType = &BasicType{BoolLitName, true, false}
+	IntLitType = &BasicType{IntLitName, true, false}
+	FloatLitType = &BasicType{FloatLitName, true, false}
+	StringLitType = &BasicType{StringLitName, true, false}
 
 	// TODO: Should I do compound lits this way too?
 )
@@ -156,17 +208,17 @@ var typeMap = map[string]string{
 
 	// "string": TODO
 }
-func typeStr(in *Type) string {
+func typeStr(in Type) string {
 	if in == UnknownType {
 		panic("UNKNOWN TYPE")
 	}
-	if in.name == "" {
+	if in.Name() == "" {
 		panic("BLANK TYPE")
 	}
 
-	ret, ok := typeMap[in.name]
+	ret, ok := typeMap[in.Name()]
 	if !ok {
-		return string(in.name) // If it wasn't a builtin type, then it probably came from a custom type
+		return string(in.Name()) // If it wasn't a builtin type, then it probably came from a custom type
 	}
 
 	// TODO: Might be better to register the type or smth? then look it up later in the LUT
@@ -294,3 +346,4 @@ func typeStr(in *Type) string {
 // 	}
 // 	return false
 // }
+

@@ -20,7 +20,9 @@ func errUndefinedVar(n Node, name string) {
 func errUndefinedType(n Node, name string) {
  	nodeError(n, fmt.Sprintf("Undefined Type: %s", name))
 }
-
+func errIdentMustBeAType(n Node, name string) {
+ 	nodeError(n, fmt.Sprintf("Identifier must point to a type: %s", name))
+}
 
 func nodeError(n Node, msg string) error {
 	p := n.Pos()
@@ -35,7 +37,7 @@ func parseError(expected TokenType, got Token) error {
 type Node interface {
 	// WalkGraphviz(string, *bytes.Buffer)
 	Pos() Position
-	Type() *Type
+	Type() Type
 }
 
 type FileNode struct {
@@ -45,7 +47,7 @@ type FileNode struct {
 func (n *FileNode) Pos() Position {
 	return Position{filename: n.filename}
 }
-func (n *FileNode) Type() *Type {
+func (n *FileNode) Type() Type {
 	return UnknownType
 }
 
@@ -55,12 +57,12 @@ type FuncNode struct {
 	arguments *ArgNode
 	returns *ArgNode
 	body Node
-	ty *Type
+	ty Type
 }
 func (n *FuncNode) Pos() Position {
 	return n.pos
 }
-func (n *FuncNode) Type() *Type {
+func (n *FuncNode) Type() Type {
 	return n.ty
 }
 
@@ -68,12 +70,12 @@ type StructNode struct {
 	global bool
 	ident Token
 	fields []*Arg
-	ty *Type
+	ty Type
 }
 func (n *StructNode) Pos() Position {
 	return Position{}
 }
-func (n *StructNode) Type() *Type {
+func (n *StructNode) Type() Type {
 	return n.ty
 }
 
@@ -83,7 +85,7 @@ type ScopeNode struct {
 func (n *ScopeNode) Pos() Position {
 	return n.Scope.Pos()
 }
-func (n *ScopeNode) Type() *Type {
+func (n *ScopeNode) Type() Type {
 	return UnknownType
 }
 
@@ -94,7 +96,7 @@ type CurlyScope struct {
 func (n *CurlyScope) Pos() Position {
 	return n.pos
 }
-func (n *CurlyScope) Type() *Type {
+func (n *CurlyScope) Type() Type {
 	return UnknownType
 }
 
@@ -105,7 +107,7 @@ type PackageNode struct {
 func (n *PackageNode) Pos() Position {
 	return n.pos
 }
-func (n *PackageNode) Type() *Type {
+func (n *PackageNode) Type() Type {
 	return UnknownType
 }
 
@@ -116,31 +118,31 @@ type CommentNode struct {
 func (n *CommentNode) Pos() Position {
 	return Position{}
 }
-func (n *CommentNode) Type() *Type {
+func (n *CommentNode) Type() Type {
 	return UnknownType
 }
 
 type ReturnNode struct {
 	pos Position
 	expr Node
-	ty *Type
+	ty Type
 }
 func (n *ReturnNode) Pos() Position {
 	return n.pos
 }
-func (n *ReturnNode) Type() *Type {
+func (n *ReturnNode) Type() Type {
 	return n.ty
 }
 
 type Arg struct {
 	name Token
-	kind Token
-	ty *Type
+	typeNode *TypeNode
+	ty Type
 }
 func (n *Arg) Pos() Position {
 	return n.name.pos
 }
-func (n *Arg) Type() *Type {
+func (n *Arg) Type() Type {
 	return n.ty
 }
 
@@ -151,20 +153,41 @@ type ArgNode struct {
 func (n *ArgNode) Pos() Position {
 	return n.pos
 }
-func (n *ArgNode) Type() *Type {
+func (n *ArgNode) Type() Type {
 	return UnknownType
+}
+
+// For wrapping type grammers to differentiate expressions
+type TypeNode struct {
+	node Node
+	ty Type
+}
+func NewTypeNode(node Node) *TypeNode {
+	return &TypeNode{node, UnknownType}
+}
+
+func (n *TypeNode) Name() string {
+	return n.ty.Name()
+}
+
+func (n *TypeNode) Pos() Position {
+	return n.node.Pos()
+}
+func (n *TypeNode) Type() Type {
+	return n.ty
 }
 
 type VarStmt struct {
 	name Token
 	global bool
+	typeSpec Node
 	initExpr Node
-	ty *Type
+	ty Type
 }
 func (n *VarStmt) Pos() Position {
 	return n.name.pos
 }
-func (n *VarStmt) Type() *Type {
+func (n *VarStmt) Type() Type {
 	return n.ty
 }
 
@@ -177,7 +200,7 @@ type ShortStmt struct {
 func (n *ShortStmt) Pos() Position {
 	return n.target.Pos()
 }
-func (n *ShortStmt) Type() *Type {
+func (n *ShortStmt) Type() Type {
 	return UnknownType
 }
 
@@ -189,7 +212,7 @@ type IfStmt struct {
 func (n *IfStmt) Pos() Position {
 	return Position{}
 }
-func (n *IfStmt) Type() *Type {
+func (n *IfStmt) Type() Type {
 	return UnknownType
 }
 
@@ -201,7 +224,7 @@ type ForStmt struct {
 func (n *ForStmt) Pos() Position {
 	return Position{}
 }
-func (n *ForStmt) Type() *Type {
+func (n *ForStmt) Type() Type {
 	return UnknownType
 }
 
@@ -211,7 +234,7 @@ type Stmt struct {
 func (n *Stmt) Pos() Position {
 	return n.node.Pos()
 }
-func (n *Stmt) Type() *Type {
+func (n *Stmt) Type() Type {
 	return UnknownType
 	// return n.ty
 }
@@ -220,36 +243,36 @@ type CallExpr struct {
 	callee Node
 	rparen Token // Just for position data I guess?
 	args []Node
-	ty *Type // Note: This is the type returned by the call
+	ty Type // Note: This is the type returned by the call
 }
 func (n *CallExpr) Pos() Position {
 	return n.callee.Pos()
 }
-func (n *CallExpr) Type() *Type {
+func (n *CallExpr) Type() Type {
 	return n.ty
 }
 
 type CompLitExpr struct {
 	callee Node
 	args []Node
-	ty *Type
+	ty Type
 }
 func (n *CompLitExpr) Pos() Position {
 	return n.callee.Pos()
 }
-func (n *CompLitExpr) Type() *Type {
+func (n *CompLitExpr) Type() Type {
 	return UnknownType
 }
 
 type GetExpr struct {
 	obj Node
 	name Token
-	ty *Type
+	ty Type
 }
 func (n *GetExpr) Pos() Position {
 	return n.obj.Pos()
 }
-func (n *GetExpr) Type() *Type {
+func (n *GetExpr) Type() Type {
 	return n.ty
 }
 
@@ -257,12 +280,12 @@ type SetExpr struct {
 	obj Node
 	name Token
 	value Node
-	ty *Type
+	ty Type
 }
 func (n *SetExpr) Pos() Position {
 	return n.obj.Pos()
 }
-func (n *SetExpr) Type() *Type {
+func (n *SetExpr) Type() Type {
 	return n.ty
 }
 
@@ -274,7 +297,7 @@ type LogicalExpr struct {
 func (n *LogicalExpr) Pos() Position {
 	return n.left.Pos()
 }
-func (n *LogicalExpr) Type() *Type {
+func (n *LogicalExpr) Type() Type {
 	return BoolType // TODO: Is this always the case?
 }
 
@@ -285,31 +308,31 @@ type AssignExpr struct {
 func (n *AssignExpr) Pos() Position {
 	return n.name.pos
 }
-func (n *AssignExpr) Type() *Type {
+func (n *AssignExpr) Type() Type {
 	return UnknownType
 }
 
 type BinaryExpr struct {
 	left, right Node
 	op Token
-	ty *Type
+	ty Type
 }
 func (n *BinaryExpr) Pos() Position {
 	return n.op.pos
 }
-func (n *BinaryExpr) Type() *Type {
+func (n *BinaryExpr) Type() Type {
 	return n.ty
 }
 
 type PostfixStmt struct {
 	left Node
 	op Token
-	// ty *Type
+	// ty Type
 }
 func (n *PostfixStmt) Pos() Position {
 	return n.op.pos
 }
-func (n *PostfixStmt) Type() *Type {
+func (n *PostfixStmt) Type() Type {
 	return UnknownType
 }
 
@@ -317,56 +340,56 @@ func (n *PostfixStmt) Type() *Type {
 type UnaryExpr struct {
 	right Node
 	op Token
-	ty *Type
+	ty Type
 }
 func (n *UnaryExpr) Pos() Position {
 	return n.op.pos
 }
-func (n *UnaryExpr) Type() *Type {
+func (n *UnaryExpr) Type() Type {
 	return n.ty
 }
 
 type LitExpr struct {
 	tok Token
 	kind TokenType
-	ty *Type
+	ty Type
 }
 func (n *LitExpr) Pos() Position {
 	return n.tok.pos
 }
-func (n *LitExpr) Type() *Type {
+func (n *LitExpr) Type() Type {
 	return n.ty
 }
 
 type IdentExpr struct {
 	tok Token
-	ty *Type
+	ty Type
 }
 func (n *IdentExpr) Pos() Position {
 	return n.tok.pos
 }
-func (n *IdentExpr) Type() *Type {
+func (n *IdentExpr) Type() Type {
 	return n.ty
 }
 
 type GroupingExpr struct {
 	Node
-	ty *Type
+	ty Type
 }
 func (n *GroupingExpr) Pos() Position {
 	return n.Node.Pos()
 }
-func (n *GroupingExpr) Type() *Type {
+func (n *GroupingExpr) Type() Type {
 	return n.ty
 }
 
 type BuiltinNode struct {
-	ty *Type
+	ty Type
 }
 func (n *BuiltinNode) Pos() Position {
 	return Position{}
 }
-func (n *BuiltinNode) Type() *Type {
+func (n *BuiltinNode) Type() Type {
 	return n.ty
 }
 
@@ -408,7 +431,7 @@ func (t *Tokens) Consume(tokType TokenType) Token {
 	if t.Peek().token == tokType {
 		return t.Next()
 	}
-	printErr(t.Peek(), "invalid consume")
+	printErr(t.Peek(), fmt.Sprintf("invalid consume: Expected: %s got: %s", tokType, t.Peek().str))
 	panic(parseError(tokType, t.Peek()))
 }
 
@@ -515,7 +538,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 			name: next.str,
 		}
 	case TYPE:
-		return p.TypeNode(globalScope)
+		return p.TypeDeclNode(globalScope)
 	case FUNC:
 		return p.ParseFuncNode(globalScope)
 
@@ -567,7 +590,7 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 // Parsing functions
 
 
-func (p *Parser) TypeNode(globalScope bool) Node {
+func (p *Parser) TypeDeclNode(globalScope bool) Node {
 	typeTok := p.Consume(TYPE)
 
 	ident := p.Consume(IDENT)
@@ -581,9 +604,10 @@ func (p *Parser) TypeNode(globalScope bool) Node {
 			}
 
 			field := p.Consume(IDENT)
-			kind := p.Consume(IDENT)
+			// kind := p.Consume(IDENT)
+			typeNode := p.ParseTypeNode()
 			p.Consume(SEMI)
-			fields = append(fields, &Arg{field, kind, UnknownType})
+			fields = append(fields, &Arg{field, typeNode, UnknownType})
 		}
 
 		s := &StructNode{
@@ -616,21 +640,28 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 
 	// Try to parse return types
 	var returns *ArgNode
+
 	{
 		next := tokens.Peek()
 		switch next.token {
 		case LPAREN:
+			// If (..) then parse the full arg node
 			returns = p.ParseArgNode()
-		case IDENT:
-			tok := tokens.Next()
-			args := ArgNode{tok.pos, make([]*Arg, 0)}
-			args.args = append(args.args, &Arg{
-				name: Token{}, // TODO
-				kind: next,
-			})
-			returns = &args
+		case LBRACE:
+			// If we see { then there is no return type
+		default:
+			// Else just parse a single typeNode
+			typeNode := p.ParseTypeNode()
+			fmt.Println("TYPENODE:", typeNode.node)
+			returns = &ArgNode{next.pos, []*Arg{
+				{
+					name: Token{}, // TODO: Unnamed, nil?
+					typeNode: typeNode,
+				},
+			}}
 		}
 	}
+
 
 	body := p.ParseCurlyScope()
 	f := FuncNode{
@@ -701,13 +732,29 @@ func (p *Parser) ParseTypedArg(tokens *Tokens) *Arg {
 		panic(fmt.Sprintf("MUST BE IDENT: %s", name.str))
 	}
 
-	kind := tokens.Next()
-	if kind.token != IDENT {
-		panic(fmt.Sprintf("MUST BE IDENT: %s", kind.str))
-	}
+	// kind := tokens.Next()
+	// if kind.token != IDENT {
+	// 	panic(fmt.Sprintf("MUST BE IDENT: %s", kind.str))
+	// }
+	typeNode := p.ParseTypeNode()
 
-	return &Arg{name, kind, UnknownType}
+	return &Arg{name, typeNode, UnknownType}
 }
+
+// func (p *Parser) ParseTypeNode() *TypeNode {
+// 	// Loop until we find the identifier, all of the prefix operators help define the type
+// 	// TODO if you do generics like myType[int] then you also need to check postfix
+// 	tok := p.Next()
+// 	switch tok.token {
+// 	// TODO: [] Slices, Arrays
+// 	case MUL: // Pointer
+// 		p.ParseTypeNode()
+// 	case IDENT:
+// 		return &TypeNode{tok}
+// 	default:
+// 		parseError(IDENT, tok)
+// 	}
+// }
 
 // func (p *Parser) ParseExprNode(tokens *Tokens) Node {
 // 	peek := tokens.Peek()
@@ -772,16 +819,22 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	name := tokens.Next()
 
 	var initExpr Node
+	var typeSpec Node
 	if tokens.Peek().token == EQUAL {
 		tokens.Next()
 		initExpr = p.ParseExpression()
 	} else if tokens.Peek().token == WALRUS {
 		tokens.Next()
 		initExpr = p.ParseExpression()
+	} else {
+		// Parse the type
+		typeSpec = p.ParseTypeNode()
 	}
 
-	tokens.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, initExpr, UnknownType}
+	fmt.Println(initExpr)
+
+	p.Consume(SEMI)
+	stmt := &VarStmt{name, globalScope, typeSpec, initExpr, UnknownType}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -789,13 +842,13 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	return stmt
 }
 
-func (p *Parser) shortStatement() *ShortStmt {
-	tok := p.Consume(IDENT)
-	op := p.Next()
-	target := &IdentExpr{tok, UnknownType} // TODO: What could this be? All sorts of assignment types
-	initExpr := p.ParseExpression()
-	return &ShortStmt{target, op, initExpr}
-}
+// func (p *Parser) shortStatement() *ShortStmt {
+// 	tok := p.Consume(IDENT)
+// 	op := p.Next()
+// 	target := &IdentExpr{tok, UnknownType} // TODO: What could this be? All sorts of assignment types
+// 	initExpr := p.ParseExpression()
+// 	return &ShortStmt{target, op, initExpr}
+// }
 
 
 func (p *Parser) ifStatement(tokens *Tokens) Node {
@@ -848,6 +901,13 @@ func (p *Parser) forStatement() Node {
 
 	return &ForStmt{forTok, init, cond, inc, body}
 
+}
+
+func (p *Parser) ParseTypeNode() *TypeNode {
+	p.blockCompLit = true
+	defer func() { p.blockCompLit = false }()
+
+	return NewTypeNode(p.ParseExpression())
 }
 
 func (p *Parser) ParseExpression() Node {
@@ -929,7 +989,7 @@ func (p *Parser) Or() Node {
 
 func (p *Parser) And() Node {
 	expr := p.Equality(p.tokens)
-	for p.tokens.Match(AND) {
+	for p.tokens.Match(ANDAND) {
 		op := p.tokens.Prev()
 		right := p.Equality(p.tokens)
 		expr = &LogicalExpr{expr, op, right}
@@ -1011,6 +1071,8 @@ func (p *Parser) Factor(tokens *Tokens) Node {
 func (p *Parser) Unary(tokens *Tokens) Node {
 	op := tokens.Peek()
 	switch op.token {
+	case AND: fallthrough
+	case MUL: fallthrough
 	case BANG: fallthrough
 	case SUB:
 		op = tokens.Next()
@@ -1068,7 +1130,7 @@ func (p *Parser) FinishCompLit(callee Node) Node {
 
 	args := make([]Node, 0)
 	for {
-		args = append(args, p.ParseExpression());
+		args = append(args, p.ParseExpression())
 		if !p.Match(COMMA) {
 			break
 		}

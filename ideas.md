@@ -1,12 +1,13 @@
 # TODO
 - [x] ++ --
 - [x] :=
+- [x] += -=
+- [x] Pointers
 - [ ] bitshifts: >> <<
 - [ ] bitwise: & | ~ ^
-- [x] += -=
-- [ ] Global variables whose expression is a function call
+- [ ] other unaries: +x ^x *x &x
+- [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)
 - [ ] Arrays
-- [ ] Pointers
 - [ ] slices
 - [ ] Maps
 - [ ] Switch statements

@@ -13,6 +13,7 @@ func main() {
 	TestGlobalVariableStruct()
 	TestCallWithStruct()
 	TestScopeNesting()
+	TestPointers()
 
 	// runBenchmark()
 
@@ -172,6 +173,14 @@ func TestScopeNesting() {
 	}
 
 	Assert(a == 5)
+}
+
+func TestPointers() {
+	y := 5
+	var x *int
+	x = &y
+	Assert(*x == 5)
+	printf("Pointer: %d", *x)
 }
 
 // func backtraceTest(n int) int {

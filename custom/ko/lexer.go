@@ -47,7 +47,8 @@ const (
 	GREATEREQUAL // >=
 	LESS // <
 	LESSEQUAL // <=
-	AND // &&
+	AND // &
+	ANDAND // &&
 	OR // ||
 	COLON // :
 	WALRUS // :=
@@ -108,7 +109,8 @@ var tokens = []string{
 	GREATEREQUAL: ">=",
 	LESS: "<",
 	LESSEQUAL: "<=",
-	AND: "&&",
+	AND: "&",
+	ANDAND: "&&",
 	OR: "||",
 	COLON: ":",
 	WALRUS: ":=",
@@ -285,10 +287,12 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 			return l.pos, LESS, "<"
 		case '&':
 			if l.match('&') {
-				l.lastToken = AND
+				l.lastToken = ANDAND
 				return l.pos, l.lastToken, "&&"
 			}
-			panic("bitwise AND not yet impl")
+			l.lastToken = AND
+			return l.pos, l.lastToken, "&"
+
 		case '|':
 			if l.match('|') {
 				l.lastToken = OR

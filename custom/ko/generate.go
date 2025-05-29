@@ -37,7 +37,6 @@ func (b *genBuf) LineDirective(pos Position) *genBuf {
 	return b
 }
 
-
 func (b *genBuf) String() string {
 	return b.buf.String()
 }
@@ -56,7 +55,7 @@ func returnArgsToString(node Node) string {
 	}
 	Printf("returnArgsToString: %+v\n", argNode)
 	Printf("returnArgsToString: %T\n", argNode.args[0])
-	return typeStr(argNode.args[0].ty)
+	return typeName(argNode.args[0].ty)
 }
 
 //go:embed runtime.h
@@ -87,7 +86,7 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 		structNode, isStruct := node.(*StructNode)
 		if isStruct {
-			buf.printEqualityPrototype(structNode.Type().name)
+			buf.printEqualityPrototype(structNode.Type())
 			buf.Add(";").Line()
 		}
 	}
@@ -141,7 +140,7 @@ func (buf *genBuf) PrintForwardDecl(n Node) {
 			Add(" ").
 			Add(t.ident.str)
 	case *VarStmt:
-		typeStr := typeStr(t.ty)
+		typeStr := typeName(t.ty)
 		buf.
 			Add(typeStr).
 			Add(" ").
@@ -183,7 +182,7 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 
 	buf.indent++
 	for _, field := range t.fields {
-		buf.Add(field.kind.str).
+		buf.Add(typeName(field.typeNode.Type())).
 			Add(" ").
 			Add(field.name.str).
 			Add(";").
@@ -237,14 +236,22 @@ func (buf *genBuf) Print(n Node) {
 	case *VarStmt:
 		if !t.global {
 			Println("VarStmt:", *t)
-			typeStr := typeStr(t.ty)
+			typeStr := typeName(t.ty)
 
-			buf.
-				Add(typeStr).
-				Add(" ").
-				Add(t.name.str).
-				Add(" = ")
-			buf.Print(t.initExpr)
+			if t.initExpr != nil {
+				buf.
+					Add(typeStr).
+					Add(" ").
+					Add(t.name.str).
+					Add(" = ")
+				buf.Print(t.initExpr)
+			} else {
+				buf.
+					Add(typeStr).
+					Add(" ").
+					Add(t.name.str)
+				// TODO: Default value
+			}
 		}
 	case *ShortStmt:
 		buf.Print(t.target)
@@ -270,7 +277,7 @@ func (buf *genBuf) Print(n Node) {
 			buf.Add("void")
 		} else {
 			for i := range t.args {
-				buf.Add(typeStr(t.args[i].ty)).
+				buf.Add(typeName(t.args[i].ty)).
 					Add(" ").
 					Add(t.args[i].name.str).
 					Add(" ")
@@ -313,10 +320,10 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.value)
 	case *BinaryExpr:
 		Println(t.left, t.right)
-		if t.left.Type().isStruct || t.right.Type().isStruct {
+		if useCustomEqualityFunc(t.left.Type()) {
 			ty := t.left.Type()
 			buf.Add("(")
-			buf.Add(equalityFunctionName(ty.name)).Add("(")
+			buf.Add(equalityFunctionName(ty)).Add("(")
 			buf.Print(t.left)
 			buf.Add(", ")
 			buf.Print(t.right)
@@ -352,7 +359,7 @@ func (buf *genBuf) Print(n Node) {
 		if buf.indent > 0 {
 			// Global variables use a different composit lit syntax
 			buf.Add("(").
-				Add(typeStr(t.ty)).
+				Add(typeName(t.ty)).
 				Add(")")
 		}
 
@@ -371,22 +378,22 @@ func (buf *genBuf) Print(n Node) {
 	}
 }
 
-func equalityFunctionName(name string) string {
-	return "__ko_"+name+"_equality"
+func equalityFunctionName(ty Type) string {
+	return "__ko_"+typeName(ty)+"_equality"
 }
 
-func (buf *genBuf) printEqualityPrototype(name string)  {
-	buf.Add("bool ").Add(equalityFunctionName(name)).
+func (buf *genBuf) printEqualityPrototype(ty Type)  {
+	buf.Add("bool ").Add(equalityFunctionName(ty)).
 		Add("(").
-		Add(name).Add(" a").
+		Add(typeName(ty)).Add(" a").
 		Add(", ").
-		Add(name).Add(" b").
+		Add(typeName(ty)).Add(" b").
 		Add(")")
 
 }
 func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 	ty := t.Type()
-	buf.printEqualityPrototype(ty.name)
+	buf.printEqualityPrototype(ty)
 	buf.Add("{").Line()
 	buf.indent++
 
@@ -403,4 +410,30 @@ func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 
 	buf.indent--
 	buf.Add("}").Line()
+}
+
+func useCustomEqualityFunc(ty Type) bool {
+	switch t := ty.(type) {
+	case *BasicType:
+		return t.isStruct
+	case *StructType:
+		return true // Technically you need to ensure all fields are comparable
+	default:
+		panic("AAA")
+	}
+
+}
+
+func typeName(ty Type) string {
+	switch t := ty.(type) {
+	case *BasicType:
+		return typeStr(t)
+	case *PointerType:
+		return typeName(t.base)+"*"
+	case *StructType:
+		return t.Name()
+	default:
+		panic("AAA")
+	}
+	return ""
 }
