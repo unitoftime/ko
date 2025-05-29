@@ -246,6 +246,10 @@ func (buf *genBuf) Print(n Node) {
 				Add(" = ")
 			buf.Print(t.initExpr)
 		}
+	case *ShortStmt:
+		buf.Print(t.target)
+		buf.Add(" ").Add(t.op.str).Add(" ")
+		buf.Print(t.initExpr)
 
 	case *IfStmt:
 		buf.Add("if (")

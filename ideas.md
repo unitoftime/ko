@@ -3,7 +3,7 @@
 - [x] :=
 - [ ] bitshifts: >> <<
 - [ ] bitwise: & | ~ ^
-- [ ] += -=
+- [x] += -=
 - [ ] Global variables whose expression is a function call
 - [ ] Arrays
 - [ ] Pointers

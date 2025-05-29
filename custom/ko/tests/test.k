@@ -43,6 +43,16 @@ func TestVariablesAndArithmetic() {
 	a++
 	Assert(a == 10 + 1 + 2 + 3)
 	a++
+
+	d := 5
+	d += 3
+	Assert(d == 8)
+	d += 3
+	Assert(d == 11)
+	d -= 1
+	Assert(d == 10)
+	d -= 10
+	Assert(d == 0)
 }
 
 func TestUnaryOperators() {

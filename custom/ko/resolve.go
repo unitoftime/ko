@@ -520,6 +520,16 @@ func (r *Resolver) resolveLocal(node Node) *Type {
 		t.ty = resultType
 		return resultType
 
+	case *ShortStmt:
+		lType := r.resolveLocal(t.target)
+		rType := r.resolveLocal(t.initExpr)
+
+		if lType != rType {
+			nodeError(t, fmt.Sprintf("Mismatched types: %s, %s", lType.name, rType.name))
+		}
+
+		return UnknownType
+
 	case *PostfixStmt:
 		// TODO: Currently you only support ++ and -- which both returh r-values and cant be used for other stuff
 		r.resolveLocal(t.left)

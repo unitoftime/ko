@@ -33,9 +33,11 @@ const (
 
 	// One or two character
 	ADD // +
-	INC // +
+	INC // ++
+	PLUSEQ // +=
 	SUB // -
 	DEC // --
+	SUBEQ // -=
 
 	BANG // !
 	BANGEQUAL // !=
@@ -93,8 +95,10 @@ var tokens = []string{
 	// One or two character
 	ADD: "ADD",
 	INC: "INC",
+	PLUSEQ: "PLUSEQ",
 	SUB: "SUB",
 	DEC: "DEC",
+	SUBEQ: "SUBEQ",
 
 	BANG: "!",
 	BANGEQUAL: "!=",
@@ -233,6 +237,9 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 			if l.match('+') {
 				l.lastToken = INC
 				return l.pos, INC, "++"
+			} else if l.match('=') {
+				l.lastToken = PLUSEQ
+				return l.pos, l.lastToken, "+="
 			}
 
 			l.lastToken = ADD
@@ -241,6 +248,9 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 			if l.match('-') {
 				l.lastToken = DEC
 				return l.pos, DEC, "--"
+			} else if l.match('=') {
+				l.lastToken = SUBEQ
+				return l.pos, l.lastToken, "-="
 			}
 
 			l.lastToken = SUB

@@ -71,29 +71,29 @@ int main (void);
 void TestHelloWorld (void);
 #line 28 "./tests/test.k"
 void TestVariablesAndArithmetic (void);
-#line 48 "./tests/test.k"
+#line 58 "./tests/test.k"
 void TestUnaryOperators (void);
-#line 59 "./tests/test.k"
+#line 69 "./tests/test.k"
 uint64_t fib (uint64_t n );
-#line 66 "./tests/test.k"
+#line 76 "./tests/test.k"
 void TestFib (void);
-#line 77 "./tests/test.k"
+#line 87 "./tests/test.k"
 void TestStructs (void);
-#line 84 "./tests/test.k"
+#line 94 "./tests/test.k"
 void TestForLoop (void);
-#line 95 "./tests/test.k"
-void TestForLoopSimple (void);
 #line 105 "./tests/test.k"
+void TestForLoopSimple (void);
+#line 115 "./tests/test.k"
 void TestIfStatement (void);
-#line 114 "./tests/test.k"
-void TestGlobalVariable (void);
-#line 120 "./tests/test.k"
-void TestGlobalVariableStruct (void);
 #line 124 "./tests/test.k"
-Point reverse (Point val );
+void TestGlobalVariable (void);
 #line 130 "./tests/test.k"
+void TestGlobalVariableStruct (void);
+#line 134 "./tests/test.k"
+Point reverse (Point val );
+#line 140 "./tests/test.k"
 void TestCallWithStruct (void);
-#line 141 "./tests/test.k"
+#line 151 "./tests/test.k"
 void TestScopeNesting (void);
 struct Point {
 	int X;
@@ -102,9 +102,9 @@ struct Point {
 bool __ko_Point_equality(Point a, Point b){
 	return ((a.X == b.X) && (a.Y == b.Y));
 }
-#line 113 "./tests/test.k"
+#line 123 "./tests/test.k"
 int globA = 5;
-#line 119 "./tests/test.k"
+#line 129 "./tests/test.k"
 Point globPoint = { 2, 3 };
 // package main
 #line 3 "./tests/test.k"
@@ -146,8 +146,17 @@ void TestVariablesAndArithmetic (void) {
 	(a++);
 	Assert((a == (((10 + 1) + 2) + 3)));
 	(a++);
+	int d = 5;
+	d += 3;
+	Assert((d == 8));
+	d += 3;
+	Assert((d == 11));
+	d -= 1;
+	Assert((d == 10));
+	d -= 10;
+	Assert((d == 0));
 }
-#line 48 "./tests/test.k"
+#line 58 "./tests/test.k"
 void TestUnaryOperators (void) {
 	int x = 5;
 	Assert((x == 5));
@@ -158,27 +167,27 @@ void TestUnaryOperators (void) {
 	Assert((!((!((!((!true))))))));
 	Assert((!(((-(x)) == (5)))));
 }
-#line 59 "./tests/test.k"
+#line 69 "./tests/test.k"
 uint64_t fib (uint64_t n ) {
 	if ((n <= 1)) {
 		return (n);
 	};
 	return ((fib((n - 2)) + fib((n - 1))));
 }
-#line 66 "./tests/test.k"
+#line 76 "./tests/test.k"
 void TestFib (void) {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
-#line 77 "./tests/test.k"
+#line 87 "./tests/test.k"
 void TestStructs (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
 	Assert((p1.X == p2.Y));
 	Assert((p1.Y == p2.X));
 }
-#line 84 "./tests/test.k"
+#line 94 "./tests/test.k"
 void TestForLoop (void) {
 	int num = 20;
 	int count = 0;
@@ -189,7 +198,7 @@ void TestForLoop (void) {
 	};
 	Assert((count == num));
 }
-#line 95 "./tests/test.k"
+#line 105 "./tests/test.k"
 void TestForLoopSimple (void) {
 	int num = 20;
 	int count = 0;
@@ -199,7 +208,7 @@ void TestForLoopSimple (void) {
 	};
 	Assert((count == num));
 }
-#line 105 "./tests/test.k"
+#line 115 "./tests/test.k"
 void TestIfStatement (void) {
 	if ((5 < 10)) {
 		Assert((1 == 1));
@@ -207,23 +216,23 @@ void TestIfStatement (void) {
 		Assert((1 == 2));
 	};
 }
-#line 114 "./tests/test.k"
+#line 124 "./tests/test.k"
 void TestGlobalVariable (void) {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
-#line 120 "./tests/test.k"
+#line 130 "./tests/test.k"
 void TestGlobalVariableStruct (void) {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }
-#line 124 "./tests/test.k"
+#line 134 "./tests/test.k"
 Point reverse (Point val ) {
 	int tmp = val.X;
 	val.X = val.Y;
 	val.Y = tmp;
 	return (val);
 }
-#line 130 "./tests/test.k"
+#line 140 "./tests/test.k"
 void TestCallWithStruct (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ 2, 1 };
@@ -233,7 +242,7 @@ void TestCallWithStruct (void) {
 	Assert((__ko_Point_equality(p1, p2) != true));
 	Assert((__ko_Point_equality(p1, p4) == true));
 }
-#line 141 "./tests/test.k"
+#line 151 "./tests/test.k"
 void TestScopeNesting (void) {
 	int a = 5;
 	;

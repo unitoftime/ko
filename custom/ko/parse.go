@@ -168,6 +168,19 @@ func (n *VarStmt) Type() *Type {
 	return n.ty
 }
 
+// += -= ... others: +=  -=  *=  /=  %=  &=  |=  ^=  <<=  >>=  &^=
+type ShortStmt struct {
+	target Node
+	op Token
+	initExpr Node
+}
+func (n *ShortStmt) Pos() Position {
+	return n.target.Pos()
+}
+func (n *ShortStmt) Type() *Type {
+	return UnknownType
+}
+
 type IfStmt struct {
 	cond Node
 	thenScope Node
@@ -741,10 +754,6 @@ func (p *Parser) parseStatement() Node {
 	switch p.Peek().token {
 	case IDENT:
 		switch p.PeekNext().token {
-		case INC: fallthrough
-		case DEC:
-			return p.postfixStatement()
-
 		case WALRUS:
 			return p.varDecl(false)
 		}
@@ -780,11 +789,12 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	return stmt
 }
 
-func (p *Parser) postfixStatement() Node {
+func (p *Parser) shortStatement() *ShortStmt {
 	tok := p.Consume(IDENT)
 	op := p.Next()
-	ident := &IdentExpr{tok, UnknownType}
-	return &PostfixStmt{ident, op}
+	target := &IdentExpr{tok, UnknownType} // TODO: What could this be? All sorts of assignment types
+	initExpr := p.ParseExpression()
+	return &ShortStmt{target, op, initExpr}
 }
 
 
@@ -840,10 +850,6 @@ func (p *Parser) forStatement() Node {
 
 }
 
-// func (p *Parser) ParseFuncCall(tokens *Tokens) Node {
-
-// }
-
 func (p *Parser) ParseExpression() Node {
 	return p.Assignment(p.tokens)
 }
@@ -851,7 +857,8 @@ func (p *Parser) ParseExpression() Node {
 func (p *Parser) Assignment(tokens *Tokens) Node {
 	expr := p.Or()
 
-	if tokens.Peek().token == EQUAL {
+	switch tokens.Peek().token {
+	case EQUAL:
 		tokens.Next()
 		value := p.Assignment(tokens)
 
@@ -865,9 +872,25 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 			name := getExp.name
 			return &SetExpr{getExp.obj, name, value, UnknownType}
 		}
+		panic(fmt.Sprintf("INVALID ASSIGNMENT TARGET: %+v", tokens.Peek().token))
 
+	case INC: fallthrough
+	case DEC:
+		// TODO: expr must be assignable
+		op := tokens.Next()
+		return &PostfixStmt{expr, op}
 
-		panic("INVALID ASSIGNMENT TARGET")
+		// Decided to handle this above because the lhs always has to be an ident?
+	// case WALRUS:
+	// 	op := tokens.Next()
+	// 	return &VarStmt{name, globalScope, initExpr, UnknownType}
+
+	case PLUSEQ: fallthrough
+	case SUBEQ:
+		// TODO: expr must be assignable
+		op := tokens.Next()
+		initExpr := p.Or()
+		return &ShortStmt{expr, op, initExpr}
 	}
 
 	return expr
