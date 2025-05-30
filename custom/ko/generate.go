@@ -31,7 +31,7 @@ func (b *genBuf) Line() *genBuf {
 }
 func (b *genBuf) LineDirective(pos Position) *genBuf {
 	// #line 31 "test.txt"
-	b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
+	// b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
 	b.Line()
 
 	return b
@@ -174,6 +174,62 @@ func (buf *genBuf) PrintArgList(args []Node) {
 	}
 }
 
+// Print the default value for the type
+func (buf *genBuf) PrintDefault(ty Type) {
+	switch t := ty.(type) {
+	case *StructType:
+		buf.PrintCompLit(&CompLitExpr{
+			// callee: // TODO: Not needed I dont think. could maybe do a fake ident node with just field name
+			args: nil, // So that it does the default for this lit too
+			ty: ty,
+		})
+
+		// for _, field := range t.fields {
+		// 	buf.PrintCompLit(&CompLitExpr{
+		// 		// callee: // TODO: Not needed I dont think. could maybe do a fake ident node with just field name
+		// 		args: nil, // So that it does the default for this lit too
+		// 		ty: field,
+		// 	})
+		// }
+	case *BasicType:
+		buf.Add(t.Default())
+		// TODO: Lookup
+	default:
+		panic(fmt.Sprintf("Unhandled Type: %T", ty))
+	}
+}
+
+func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
+	if buf.indent > 0 {
+		// Global variables use a different composit lit syntax
+		buf.Add("(").
+			Add(typeName(c.ty)).
+			Add(")")
+	}
+
+	ty := c.Type()
+
+	switch t := ty.(type) {
+	case *StructType:
+		buf.Add("{ ")
+		for i := range t.fields {
+			arg := c.GetArg(i)
+			if arg != nil {
+				buf.Print(arg)
+			} else {
+				buf.PrintDefault(t.fields[i])
+			}
+
+			if i < len(t.fields)-1 {
+				buf.Add(", ")
+			}
+		}
+		buf.Add(" }")
+	default:
+		panic(fmt.Sprintf("Unhandled Type: %T", ty))
+	}
+}
+
 func (buf *genBuf) PrintStructNode(t *StructNode) {
 	buf.Add("struct ").
 		Add(t.ident.str).
@@ -193,6 +249,29 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 	buf.Add("}")
 }
 
+func (buf *genBuf) PrintBinaryExpr(t *BinaryExpr) {
+	fmt.Println("HERERERE:", t.left.Type(), t.right.Type())
+	if useCustomEqualityFunc(t.left.Type()) {
+		ty := t.left.Type()
+		buf.Add("(")
+		buf.Add(equalityFunctionName(ty)).Add("(")
+		buf.Print(t.left)
+		buf.Add(", ")
+		buf.Print(t.right)
+		buf.Add(")")
+		buf.Add(" ").Add(t.op.str).Add(" ")
+		buf.Add("true")
+		buf.Add(")")
+	} else {
+		// Simple binary expression
+		buf.Add("(")
+		buf.Print(t.left)
+		buf.Add(" ").Add(t.op.str).Add(" ")
+		buf.Print(t.right)
+		buf.Add(")")
+	}
+}
+
 func (buf *genBuf) Print(n Node) {
 	switch t := n.(type) {
 	case *FileNode:
@@ -205,7 +284,9 @@ func (buf *genBuf) Print(n Node) {
 	case *CommentNode:
 	case *StructNode:
 		if !t.global {
+			buf.Add("typedef ")
 			buf.PrintStructNode(t)
+			buf.Add(" ").Add(t.ident.str)
 			buf.Add(";").Line()
 		}
 	case *FuncNode:
@@ -320,25 +401,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.value)
 	case *BinaryExpr:
 		Println(t.left, t.right)
-		if useCustomEqualityFunc(t.left.Type()) {
-			ty := t.left.Type()
-			buf.Add("(")
-			buf.Add(equalityFunctionName(ty)).Add("(")
-			buf.Print(t.left)
-			buf.Add(", ")
-			buf.Print(t.right)
-			buf.Add(")")
-			buf.Add(" ").Add(t.op.str).Add(" ")
-			buf.Add("true")
-			buf.Add(")")
-		} else {
-			// Simple binary expression
-			buf.Add("(")
-			buf.Print(t.left)
-			buf.Add(" ").Add(t.op.str).Add(" ")
-			buf.Print(t.right)
-			buf.Add(")")
-		}
+		buf.PrintBinaryExpr(t)
 
 	case *PostfixStmt:
 		buf.Add("(")
@@ -356,16 +419,7 @@ func (buf *genBuf) Print(n Node) {
 	case *IdentExpr:
 		buf.Add(t.tok.str)
 	case *CompLitExpr:
-		if buf.indent > 0 {
-			// Global variables use a different composit lit syntax
-			buf.Add("(").
-				Add(typeName(t.ty)).
-				Add(")")
-		}
-
-		buf.Add("{ ")
-		buf.PrintArgList(t.args)
-		buf.Add(" }")
+		buf.PrintCompLit(t)
 
 	case *GroupingExpr:
 		buf.Add("(")
@@ -401,7 +455,24 @@ func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 	buf.Add("return (")
 	for i, field := range t.fields {
 		fname := field.name.str
-		buf.Add("(a.").Add(fname).Add(" == ").Add("b.").Add(fname).Add(")")
+		// buf.Add("(a.").Add(fname).Add(" == ").Add("b.").Add(fname).Add(")")
+		expr := &BinaryExpr{
+			// left: &IdentExpr{tok: Token{token: IDENT, str: "a"}, ty: field.ty},
+			// right: &IdentExpr{tok: Token{token: IDENT, str: "b"}, ty: field.ty},
+			left: &GetExpr{
+				obj: &IdentExpr{tok: Token{token: IDENT, str: "a"}, ty: t.ty},
+				name: Token{str: fname},
+				ty: field.ty,
+			},
+			right: &GetExpr{
+				obj: &IdentExpr{tok: Token{token: IDENT, str: "b"}, ty: t.ty},
+				name: Token{str: fname},
+				ty: field.ty,
+			},
+			op: Token{token: EQUALEQUAL, str: "=="},
+			ty: UnknownType, // TODO: Should come from operator
+		}
+		buf.PrintBinaryExpr(expr)
 		if i < len(t.fields)-1 {
 			buf.Add(" && ")
 		}
@@ -413,9 +484,9 @@ func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 }
 
 func useCustomEqualityFunc(ty Type) bool {
-	switch t := ty.(type) {
+	switch ty.(type) {
 	case *BasicType:
-		return t.isStruct
+		return false
 	case *StructType:
 		return true // Technically you need to ensure all fields are comparable
 	default:

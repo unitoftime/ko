@@ -33,7 +33,6 @@ type BasicType struct {
 
 	// General Type information
 	comparable bool
-	isStruct bool
 }
 
 func (t *BasicType) Underlying() Type {
@@ -44,8 +43,12 @@ func (t *BasicType) Name() string {
 	return t.name
 }
 
+func (t *BasicType) Default() string {
+	return "0" // TODO: need to determine this based on name
+}
+
 var (
-	BoolType = &BasicType{"bool", true, false}
+	BoolType = &BasicType{"bool", true}
 )
 
 // type Type interface {
@@ -151,14 +154,14 @@ const BoolLitName = "untypedBool"
 
 var (
 	UnknownType Type = nil
-	VoidType = &BasicType{"void", false, false} // TODO: Comparability?
+	VoidType = &BasicType{"void", false} // TODO: Comparability?
 
 	// These are literal types that can be dynamically resolved to whatever is needed
 	// TODO: UntypedBool,Int,Rune,Float,Complex,String,Nil?
-	BoolLitType = &BasicType{BoolLitName, true, false}
-	IntLitType = &BasicType{IntLitName, true, false}
-	FloatLitType = &BasicType{FloatLitName, true, false}
-	StringLitType = &BasicType{StringLitName, true, false}
+	BoolLitType = &BasicType{BoolLitName, true}
+	IntLitType = &BasicType{IntLitName, true}
+	FloatLitType = &BasicType{FloatLitName, true}
+	StringLitType = &BasicType{StringLitName, true}
 
 	// TODO: Should I do compound lits this way too?
 )

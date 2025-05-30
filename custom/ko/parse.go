@@ -257,17 +257,29 @@ type CompLitExpr struct {
 	args []Node
 	ty Type
 }
+func (n *CompLitExpr) String() string {
+	return fmt.Sprintf("[Node.CompLitExpr: %v.{%d}]", n.callee, len(n.args))
+}
 func (n *CompLitExpr) Pos() Position {
 	return n.callee.Pos()
 }
 func (n *CompLitExpr) Type() Type {
-	return UnknownType
+	return n.ty
+}
+func (n *CompLitExpr) GetArg(idx int) Node {
+	if idx < len(n.args) {
+		return n.args[idx]
+	}
+	return nil
 }
 
 type GetExpr struct {
 	obj Node
 	name Token
 	ty Type
+}
+func (n *GetExpr) String() string{
+	return fmt.Sprintf("[Node.GetExpr: xxx.(%s)]", n.name.str)
 }
 func (n *GetExpr) Pos() Position {
 	return n.obj.Pos()
@@ -1125,6 +1137,7 @@ func (p *Parser) FinishCall(callee Node) Node {
 
 func (p *Parser) FinishCompLit(callee Node) Node {
 	if p.Match(RBRACE) {
+		Println("FoundBlankCompLit:", callee)
 		return &CompLitExpr{callee, nil, UnknownType}
 	}
 

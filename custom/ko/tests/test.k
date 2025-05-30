@@ -6,6 +6,7 @@ func main() {
 	TestUnaryOperators()
 	TestFib()
 	TestStructs()
+	TestStructsNested()
 	TestForLoop()
 	TestForLoopSimple()
 	TestIfStatement()
@@ -90,6 +91,28 @@ func TestStructs() {
 	var p2 = Point{p1.Y, p1.X}
 	Assert(p1.X == p2.Y)
 	Assert(p1.Y == p2.X)
+	Assert(Point{} != p2)
+}
+
+type Rect struct {
+	Min Point
+	Max Point
+}
+func TestStructsNested() {
+	r := Rect{Point{1, 2}, Point{3, 4}}
+	r2 := Rect{}
+	Assert(r.Min.X == 1)
+	Assert(r.Min.Y == 2)
+	Assert(r.Max.X == 3)
+	Assert(r.Max.Y == 4)
+	Assert(Rect{} != r)
+	Assert(r2 != r)
+
+	type Rect2 struct {
+		R Rect
+	}
+	rr := Rect2{}
+	Assert(rr.R.Min.X != r.Min.X)
 }
 
 func TestForLoop() {
@@ -174,6 +197,12 @@ func TestScopeNesting() {
 
 	Assert(a == 5)
 }
+
+// func TestArrays() {
+// 	var myArray [8]int
+// 	myArray[0] = 99
+// 	Assert(myArray[0] == 99)
+// }
 
 func TestPointers() {
 	y := 5

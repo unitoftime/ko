@@ -3,13 +3,15 @@
 - [x] :=
 - [x] += -=
 - [x] Pointers
-- [ ] bitshifts: >> <<
+- [ ] bitshifts: >> << (maybe only allow unsigned types)
 - [ ] bitwise: & | ~ ^
-- [ ] other unaries: +x ^x *x &x
+- [ ] other unaries: +x ^x
+- [ ] Foreign functions
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)
 - [ ] Arrays
 - [ ] slices
 - [ ] Maps
+- [ ] Methods
 - [ ] Switch statements
 - [ ] else if statements
 - [ ] enums -> I think just generate compile time constants
@@ -24,6 +26,7 @@
 - [ ] Static analyzers: clang-tidy, cppcheck
 - [ ] Guarded (debug mode) allocator that ensures you dont go out of bounds
 - [ ] Something like a goroutine
+- [ ] prevent signed integer overflow (on adds and subtracts) - There's builtins in gcc
 
 # Things I'm unsure about
 - glibc linking vs musl

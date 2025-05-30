@@ -73,9 +73,25 @@ func (r *Resolver) AddIdent(name string, n Node) {
 // 	CheckScope(
 // }
 
+// TODO: Resolve selector path?
 func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
+	fmt.Println("---")
+	fmt.Println("CheckScopeField:", obj, field)
+
 	switch t := obj.(type) {
+	case *GetExpr:
+		fmt.Println("CheckField:.GetExpr:", t.obj, t.name.str, field)
+		// return r.CheckScopeField(t.obj, field)
+		left, ok := r.CheckScopeField(t.obj, t.name.str)
+		if !ok {
+			panic("AAA")
+		}
+		fmt.Printf("CheckField.Left: %T, %v\n", left, left)
+		ret, ok := r.CheckScopeField(left, field)
+		fmt.Println("Returning:", ret)
+		return ret, ok
 	case *IdentExpr:
+		fmt.Println("CheckField.IdentExpr:", t, field)
 		n, ok := r.CheckScope(t.tok.str)
 		if !ok {
 			errUndefinedVar(n, t.tok.str)
@@ -86,8 +102,19 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		if !ok {
 			errUndefinedType(structNode, strType.Name())
 		}
-		return getField(structNode, field)
 
+		fmt.Println("StructNode: ", t, field)
+		return getField(structNode, field)
+	case *Arg:
+		fmt.Println("CheckField:.Arg:", t, t.Type().Name(), field)
+		argTypeName := t.Type().Name()
+		structNode, ok := r.CheckScope(argTypeName)
+		if !ok {
+			errUndefinedType(structNode, argTypeName)
+		}
+		ret, ok := getField(structNode, field)
+		fmt.Println("CheckField:.Arg.Return:", ret, ok)
+		return ret, ok
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
 	}
@@ -98,8 +125,10 @@ func getField(n Node, field string) (Node, bool) {
 
 	switch t := n.(type) {
 	case *StructNode:
+		fmt.Println("getField:", t, field)
 		for i := range t.fields {
 			if t.fields[i].name.str == field {
+				fmt.Println("Found Field:", t.fields[i])
 				return t.fields[i], true
 			}
 		}
@@ -166,12 +195,12 @@ func (r *Resolver) PopScope() {
 func NewResolver() *Resolver {
 	builtin := NewScope()
 	// TODO: FuncTypes
-	builtin.AddIdent("printf", &BuiltinNode{&BasicType{"void", false, false}})
-	builtin.AddIdent("Assert", &BuiltinNode{&BasicType{"void", false, false}})
+	builtin.AddIdent("printf", &BuiltinNode{&BasicType{"void", false}})
+	builtin.AddIdent("Assert", &BuiltinNode{&BasicType{"void", false}})
 
 	// Add builtin types
-	builtin.AddIdent("u64", &BuiltinNode{&BasicType{"u64", true, false}})
-	builtin.AddIdent("int", &BuiltinNode{&BasicType{"int", true, false}})
+	builtin.AddIdent("u64", &BuiltinNode{&BasicType{"u64", true}})
+	builtin.AddIdent("int", &BuiltinNode{&BasicType{"int", true}})
 
 	return &Resolver{
 		builtin: builtin,
@@ -484,12 +513,20 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		Println("GetExpr:", t)
 		// t.ty = r.resolveLocal(t.obj)
 
+		// n, ok := r.CheckScopeField(t.obj, t.name.str)
+		// if !ok {
+		// 	errUndefinedVar(t, t.name.str)
+		// }
+		// t.ty = n.Type()
+		// return t.ty
+
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
 			errUndefinedVar(t, t.name.str)
 		}
 		t.ty = n.Type()
 		return t.ty
+
 	case *SetExpr:
 		Println("SetExpr:", t)
 		t.ty = r.resolveLocal(t.obj)
@@ -574,13 +611,13 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		return t.ty
 
 	case *CompLitExpr:
-		Println("CompLitExpr:", t)
+		Println("Resolve.CompLitExpr:", t)
 		t.ty = r.resolveLocal(t.callee)
 
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		Println("CompLitExpr.Typed:", t)
+		Println("CompLitExpr.Typed:", t.ty)
 		return t.ty
 
 	case *GroupingExpr:
