@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Type interface {
 	Underlying() Type
 	Name() string // Returns a unique name for this type
@@ -20,13 +22,24 @@ func (t *StructType) Name() string {
 type PointerType struct {
 	base Type
 }
-
 func (t *PointerType) Underlying() Type {
 	return t
 }
 func (t *PointerType) Name() string {
 	return "*"+t.base.Name()
 }
+
+type ArrayType struct {
+	len int
+	base Type
+}
+func (t *ArrayType) Underlying() Type {
+	return t
+}
+func (t *ArrayType) Name() string {
+	return fmt.Sprintf("[%d]%s", t.len, t.base.Name())
+}
+
 
 type BasicType struct {
 	name string // The name of the type
@@ -46,10 +59,6 @@ func (t *BasicType) Name() string {
 func (t *BasicType) Default() string {
 	return "0" // TODO: need to determine this based on name
 }
-
-var (
-	BoolType = &BasicType{"bool", true}
-)
 
 // type Type interface {
 // 	Underlying()
@@ -88,6 +97,8 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 	}
 	return false
 }
+
+func tryCast(a, b Type) bool {
 
 
 // List of types that can be cast to int
@@ -163,7 +174,9 @@ var (
 	FloatLitType = &BasicType{FloatLitName, true}
 	StringLitType = &BasicType{StringLitName, true}
 
-	// TODO: Should I do compound lits this way too?
+
+	BoolType = &BasicType{"bool", true}
+	IntType = &BasicType{"int", true}
 )
 
 // const AutoType = "auto"

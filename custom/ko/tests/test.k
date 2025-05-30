@@ -198,11 +198,11 @@ func TestScopeNesting() {
 	Assert(a == 5)
 }
 
-// func TestArrays() {
-// 	var myArray [8]int
-// 	myArray[0] = 99
-// 	Assert(myArray[0] == 99)
-// }
+func TestArrays() {
+	var myArray [8]int
+	// myArray[0] = 99
+	// Assert(myArray[0] == 99)
+}
 
 func TestPointers() {
 	y := 5

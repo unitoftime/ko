@@ -157,6 +157,20 @@ func (n *ArgNode) Type() Type {
 	return UnknownType
 }
 
+// Technically this is only for type grammer
+type ArrayNode struct {
+	pos Position
+	len Node // if nil, means a slice
+	elem Node
+	ty Type
+}
+func (n *ArrayNode) Pos() Position {
+	return n.pos
+}
+func (n *ArrayNode) Type() Type {
+	return n.ty
+}
+
 // For wrapping type grammers to differentiate expressions
 type TypeNode struct {
 	node Node
@@ -249,6 +263,19 @@ func (n *CallExpr) Pos() Position {
 	return n.callee.Pos()
 }
 func (n *CallExpr) Type() Type {
+	return n.ty
+}
+
+type IndexExpr struct {
+	callee Node
+	lbrack Token
+	index Node
+	ty Type // Note: This is the type returned by the call
+}
+func (n *IndexExpr) Pos() Position {
+	return n.callee.Pos()
+}
+func (n *IndexExpr) Type() Type {
 	return n.ty
 }
 
@@ -1102,6 +1129,8 @@ func (p *Parser) Call() Node {
 	for {
 		if p.Match(LPAREN) {
 			expr = p.FinishCall(expr)
+		} else if  p.Match(LBRACK) {
+			expr = p.FinishIndex(expr)
 		} else if !p.blockCompLit && p.Match(LBRACE) {
 			expr = p.FinishCompLit(expr)
 		} else if  p.Match(DOT) {
@@ -1122,7 +1151,7 @@ func (p *Parser) FinishCall(callee Node) Node {
 
 	args := make([]Node, 0)
 	for {
-		args = append(args, p.ParseExpression());
+		args = append(args, p.ParseExpression())
 		if !p.Match(COMMA) {
 			break
 		}
@@ -1135,7 +1164,13 @@ func (p *Parser) FinishCall(callee Node) Node {
 	return &CallExpr{callee, tok, args, UnknownType}
 }
 
-func (p *Parser) FinishCompLit(callee Node) Node {
+func (p *Parser) FinishIndex(callee Node) *IndexExpr {
+	indexExpr := p.ParseExpression()
+	p.Consume(RBRACK)
+	return &IndexExpr{callee, p.tokens.Prev(), indexExpr, UnknownType}
+}
+
+func (p *Parser) FinishCompLit(callee Node) *CompLitExpr {
 	if p.Match(RBRACE) {
 		Println("FoundBlankCompLit:", callee)
 		return &CompLitExpr{callee, nil, UnknownType}
@@ -1187,6 +1222,22 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 
 		tokens.Consume(RPAREN)
 		return expr
+	case LBRACK:
+		lbrack := p.Next()
+		var aLen Node
+		if p.Match(RBRACK) {
+			// Then slice type
+			aLen = nil
+		} else {
+			// Parse inner expression
+			aLen = p.ParseExpression()
+			p.Consume(RBRACK)
+		}
+		// Parse Right side
+		elem := p.ParseExpression()
+
+		node := &ArrayNode{lbrack.pos, aLen, elem, UnknownType}
+		return node
 	}
 
 	printErr(op, "illegal expr")

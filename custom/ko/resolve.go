@@ -200,7 +200,7 @@ func NewResolver() *Resolver {
 
 	// Add builtin types
 	builtin.AddIdent("u64", &BuiltinNode{&BasicType{"u64", true}})
-	builtin.AddIdent("int", &BuiltinNode{&BasicType{"int", true}})
+	builtin.AddIdent("int", &BuiltinNode{IntType})
 
 	return &Resolver{
 		builtin: builtin,
@@ -792,7 +792,19 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 		fmt.Println("TYPETYPETYPE: ", node.Type())
 
 		return t.ty
+	case *ArrayNode:
+		if t.len == nil {
+			// TODO: Slice type
+		} else {
+			lenExpr := r.resolveLocal(t.len)
+			if tryCast(lenExpr, IntType) {
+				nodeError(t, "array length expression must be castable to an int")
+			}
+			
 
+			elemType := r.ResolveTypeNodeExpr(t.elem)
+			t.ty = &ArrayType{lenVal, elemType}
+		}
 	default:
 		panic(fmt.Sprintf("ResolveTypeNodeExpr: Unknown NodeType: %T", t))
 	}

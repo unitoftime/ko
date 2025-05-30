@@ -2,19 +2,20 @@
 - [x] ++ --
 - [x] :=
 - [x] += -=
+- [x] Structs
 - [x] Pointers
+- [ ] Arrays
 - [ ] bitshifts: >> << (maybe only allow unsigned types)
 - [ ] bitwise: & | ~ ^
 - [ ] other unaries: +x ^x
 - [ ] Foreign functions
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)
-- [ ] Arrays
 - [ ] slices
 - [ ] Maps
 - [ ] Methods
 - [ ] Switch statements
 - [ ] else if statements
-- [ ] enums -> I think just generate compile time constants
+- [ ] enums -> I think just generate compile time constants. Maybe iota?
 - [ ] tagged unions -> compile time completion check
 - [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
 - [ ] alloc/free and general memory safety. References? Ownership? Pointers? Nil Checks?
