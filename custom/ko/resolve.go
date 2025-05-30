@@ -800,11 +800,13 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 			if tryCast(lenExpr, IntType) {
 				nodeError(t, "array length expression must be castable to an int")
 			}
-			
+
+			lenVal, _ := castToInt(t.len)
 
 			elemType := r.ResolveTypeNodeExpr(t.elem)
 			t.ty = &ArrayType{lenVal, elemType}
 		}
+		return t.ty
 	default:
 		panic(fmt.Sprintf("ResolveTypeNodeExpr: Unknown NodeType: %T", t))
 	}

@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Type interface {
 	Underlying() Type
@@ -98,8 +101,20 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 	return false
 }
 
-func tryCast(a, b Type) bool {
-
+//TODO: ResolveToConstInt
+func castToInt(n Node) (int, bool) {
+	switch t := n.(type) {
+	case *LitExpr:
+		lenVal, err := strconv.Atoi(t.tok.str)
+		if err != nil {
+			nodeError(n, "array length expression must convert to an int")
+		}
+		return lenVal, true
+	default:
+		panic(fmt.Sprintf("ResolveToConstInt: Unknown NodeType: %T", t))
+	}
+	return 0, false
+}
 
 // List of types that can be cast to int
 var intLitCast = map[string]bool {
