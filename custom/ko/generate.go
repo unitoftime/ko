@@ -55,7 +55,7 @@ func returnArgsToString(node Node) string {
 	}
 	Printf("returnArgsToString: %+v\n", argNode)
 	Printf("returnArgsToString: %T\n", argNode.args[0])
-	return typeName(argNode.args[0].ty)
+	return typeNameC(argNode.args[0].ty)
 }
 
 //go:embed runtime.h
@@ -89,6 +89,12 @@ func (buf *genBuf) Generate(result ParseResult) {
 			buf.printEqualityPrototype(structNode.Type())
 			buf.Add(";").Line()
 		}
+	}
+
+	// Forward declare all arrays
+	for _, ty := range regTypeMap {
+		// TODO: You could probably register *special* types you find during typechecking, rather than looping everything
+		buf.PrintGeneratedType(ty)
 	}
 
 	// Forward Declare all functions
@@ -132,6 +138,29 @@ func (buf *genBuf) PrintFuncDef(t *FuncNode) {
 	buf.Add(")")
 }
 
+func (buf *genBuf) PrintGeneratedType(ty Type) {
+	switch t := ty.(type) {
+	case *ArrayType:
+		name := typeNameC(ty)
+
+		// Forward Declaration
+		// TODO: Would be good to hoist this all up so nested arrays arent problematic
+		buf.Add("typedef struct ").
+			Add(name).Add(" ").Add(name)
+		buf.Add(";").Line()
+
+		// Type definition
+		elemName := typeNameC(t.base)
+		buf.Add("struct ").Add(name).Add(" {").Line()
+		buf.indent++
+		buf.Add(elemName).Add(" ").Add("a")
+		buf.Add(fmt.Sprintf("[%d]", t.len))
+		buf.Add(";").Line()
+		buf.indent--
+		buf.Add("};")
+	}
+}
+
 func (buf *genBuf) PrintForwardDecl(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
@@ -140,7 +169,7 @@ func (buf *genBuf) PrintForwardDecl(n Node) {
 			Add(" ").
 			Add(t.ident.str)
 	case *VarStmt:
-		typeStr := typeName(t.ty)
+		typeStr := typeNameC(t.ty)
 		buf.
 			Add(typeStr).
 			Add(" ").
@@ -191,6 +220,14 @@ func (buf *genBuf) PrintDefault(ty Type) {
 		// 		ty: field,
 		// 	})
 		// }
+	case *ArrayType:
+		// TODO: Technically this can be written: {0}
+		buf.Add("{0}")
+		// buf.Add("{{")
+		// buf.PrintDefault(t.base)
+		// buf.Add("}}")
+	case *PointerType:
+		buf.Add("NULL")
 	case *BasicType:
 		buf.Add(t.Default())
 		// TODO: Lookup
@@ -200,14 +237,13 @@ func (buf *genBuf) PrintDefault(ty Type) {
 }
 
 func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
+	ty := c.Type()
 	if buf.indent > 0 {
 		// Global variables use a different composit lit syntax
 		buf.Add("(").
-			Add(typeName(c.ty)).
+			Add(typeNameC(c.ty)).
 			Add(")")
 	}
-
-	ty := c.Type()
 
 	switch t := ty.(type) {
 	case *StructType:
@@ -225,6 +261,25 @@ func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
 			}
 		}
 		buf.Add(" }")
+	case *ArrayType:
+		if c.args == nil {
+			buf.PrintDefault(t)
+		} else {
+			buf.Add("{{ ")
+			for i := range t.len {
+				arg := c.GetArg(i)
+				if arg != nil {
+					buf.Print(arg)
+				} else {
+					buf.PrintDefault(t.base)
+				}
+
+				if i < t.len-1 {
+					buf.Add(", ")
+				}
+			}
+			buf.Add(" }}")
+		}
 	default:
 		panic(fmt.Sprintf("Unhandled Type: %T", ty))
 	}
@@ -238,7 +293,7 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 
 	buf.indent++
 	for _, field := range t.fields {
-		buf.Add(typeName(field.typeNode.Type())).
+		buf.Add(typeNameC(field.typeNode.Type())).
 			Add(" ").
 			Add(field.name.str).
 			Add(";").
@@ -317,22 +372,7 @@ func (buf *genBuf) Print(n Node) {
 	case *VarStmt:
 		if !t.global {
 			Println("VarStmt:", *t)
-			typeStr := typeName(t.ty)
-
-			if t.initExpr != nil {
-				buf.
-					Add(typeStr).
-					Add(" ").
-					Add(t.name.str).
-					Add(" = ")
-				buf.Print(t.initExpr)
-			} else {
-				buf.
-					Add(typeStr).
-					Add(" ").
-					Add(t.name.str)
-				// TODO: Default value
-			}
+			buf.PrintVarDecl(t.name.str, t.Type(), t.initExpr)
 		}
 	case *ShortStmt:
 		buf.Print(t.target)
@@ -358,7 +398,7 @@ func (buf *genBuf) Print(n Node) {
 			buf.Add("void")
 		} else {
 			for i := range t.args {
-				buf.Add(typeName(t.args[i].ty)).
+				buf.Add(typeNameC(t.args[i].ty)).
 					Add(" ").
 					Add(t.args[i].name.str).
 					Add(" ")
@@ -403,6 +443,12 @@ func (buf *genBuf) Print(n Node) {
 		Println(t.left, t.right)
 		buf.PrintBinaryExpr(t)
 
+	case *IndexExpr:
+		buf.Print(t.callee)
+		buf.Add(".a[")
+		buf.Print(t.index)
+		buf.Add("]")
+
 	case *PostfixStmt:
 		buf.Add("(")
 		buf.Print(t.left)
@@ -413,7 +459,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.right)
 		buf.Add(")")
 	case *AssignExpr:
-		buf.Add(t.name.str)
+		buf.Print(t.name)
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *IdentExpr:
@@ -433,15 +479,15 @@ func (buf *genBuf) Print(n Node) {
 }
 
 func equalityFunctionName(ty Type) string {
-	return "__ko_"+typeName(ty)+"_equality"
+	return "__ko_"+typeNameC(ty)+"_equality"
 }
 
 func (buf *genBuf) printEqualityPrototype(ty Type)  {
 	buf.Add("bool ").Add(equalityFunctionName(ty)).
 		Add("(").
-		Add(typeName(ty)).Add(" a").
+		Add(typeNameC(ty)).Add(" a").
 		Add(", ").
-		Add(typeName(ty)).Add(" b").
+		Add(typeNameC(ty)).Add(" b").
 		Add(")")
 
 }
@@ -489,22 +535,59 @@ func useCustomEqualityFunc(ty Type) bool {
 		return false
 	case *StructType:
 		return true // Technically you need to ensure all fields are comparable
+	case *ArrayType:
+		return true // Technically you need to ensure all fields are comparable
 	default:
-		panic("AAA")
+		panic(fmt.Sprintf("Unknown Type: %T", ty))
 	}
 
 }
 
-func typeName(ty Type) string {
+// Emits a variable declaration with name type and init expression
+// If init is nil, emits the default value of the type
+func (buf *genBuf) PrintVarDecl(name string, ty Type, init Node) {
+	buf.Add(varDeclLHS(name, ty))
+	buf.Add(" = ")
+
+	// RHS
+	if init == nil {
+		buf.PrintDefault(ty)
+	} else {
+		buf.Print(init)
+	}
+}
+
+// Returns the left hand side of a variable declaration
+func varDeclLHS(name string, ty Type) string {
+	typeStr := typeNameC(ty)
+	return typeStr + " " + name
+
+	// typeStr := typeNameC(ty)
+	// switch t := ty.(type) {
+	// // Arrays have a weird syntax in C
+	// case *ArrayType:
+	// 	base := varDeclLHS(name, t.base)
+	// 	return fmt.Sprintf("%s[%d]", base, t.len)
+	// default:
+	// 	return typeStr + " " + name
+	// }
+}
+
+// Returns the type name in C
+// For arrays we return the type name of the base type
+func typeNameC(ty Type) string {
 	switch t := ty.(type) {
 	case *BasicType:
 		return typeStr(t)
 	case *PointerType:
-		return typeName(t.base)+"*"
+		return typeNameC(t.base)+"*"
 	case *StructType:
 		return t.Name()
+	case *ArrayType:
+		return fmt.Sprintf("__ko_%d%s_arr", t.len, typeNameC(t.base))
+		// return typeNameC(t.base)
 	default:
-		panic("AAA")
+		panic(fmt.Sprintf("Unknown Type: %T", ty))
 	}
 	return ""
 }

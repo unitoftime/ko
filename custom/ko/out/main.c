@@ -67,7 +67,10 @@ typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 typedef struct Rect Rect;
 bool __ko_Rect_equality(Rect a, Rect b);
-
+typedef struct __ko_8int_arr __ko_8int_arr;
+struct __ko_8int_arr {
+	int a[8];
+};
 int main (void);
 
 void TestHelloWorld (void);
@@ -99,6 +102,8 @@ Point reverse (Point val );
 void TestCallWithStruct (void);
 
 void TestScopeNesting (void);
+
+void TestArrays (void);
 
 void TestPointers (void);
 struct Point {
@@ -301,9 +306,26 @@ void TestScopeNesting (void) {
 	Assert((a == 5));
 }
 
+void TestArrays (void) {
+	int len = 8;
+	__ko_8int_arr myArray = {0};
+	for (int i = 0; (i < len); (i++)) {
+		Assert((myArray.a[i] == 0));
+		myArray.a[0] = 99;
+	};
+	for (int i = 0; (i < len); (i++)) {
+		Assert((myArray.a[i] == 99));
+	};
+	;
+	myArray = (__ko_8int_arr){0};
+	for (int i = 0; (i < len); (i++)) {
+		Assert((myArray.a[i] == 0));
+	};
+}
+
 void TestPointers (void) {
 	int y = 5;
-	int* x;
+	int* x = NULL;
 	x = (&y);
 	Assert(((*x) == 5));
 	printf("Pointer: %d", (*x));

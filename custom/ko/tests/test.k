@@ -199,9 +199,23 @@ func TestScopeNesting() {
 }
 
 func TestArrays() {
+	var len = 8
 	var myArray [8]int
-	// myArray[0] = 99
-	// Assert(myArray[0] == 99)
+
+	for i := 0; i < len; i++ {
+		Assert(myArray[i] == 0)
+		myArray[0] = 99
+	}
+
+	for i := 0; i < len; i++ {
+		Assert(myArray[i] == 99)
+	}
+
+	// Clear and recheck
+	myArray = [8]int{}
+	for i := 0; i < len; i++ {
+		Assert(myArray[i] == 0)
+	}
 }
 
 func TestPointers() {

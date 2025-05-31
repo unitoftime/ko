@@ -4,14 +4,14 @@
 - [x] += -=
 - [x] Structs
 - [x] Pointers
-- [ ] Arrays
+- [x] Arrays
 - [ ] bitshifts: >> << (maybe only allow unsigned types)
 - [ ] bitwise: & | ~ ^
 - [ ] other unaries: +x ^x
 - [ ] Foreign functions
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)
-- [ ] slices
-- [ ] Maps
+- [ ] slices <- maybe implement in lang?
+- [ ] Maps <- maybe implement in lang?
 - [ ] Methods
 - [ ] Switch statements
 - [ ] else if statements
@@ -28,6 +28,8 @@
 - [ ] Guarded (debug mode) allocator that ensures you dont go out of bounds
 - [ ] Something like a goroutine
 - [ ] prevent signed integer overflow (on adds and subtracts) - There's builtins in gcc
+- [ ] Default functions for structs: Just to have one single place that I can call to return a default struct <- maybe not needed, bc I think {0} works for all my cases
+- [ ] When assigning complits and default values, there is probably some places where I can do things like {{0}} or {0},
 
 # Things I'm unsure about
 - glibc linking vs musl

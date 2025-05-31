@@ -5,6 +5,18 @@ import (
 	"strconv"
 )
 
+var regTypeMap = make(map[string]Type)
+
+func getType(ty Type) Type {
+	ret, ok := regTypeMap[ty.Name()]
+	if ok {
+		return ret
+	}
+	regTypeMap[ty.Name()] = ty
+	return ty
+}
+
+
 type Type interface {
 	Underlying() Type
 	Name() string // Returns a unique name for this type
@@ -70,13 +82,17 @@ func (t *BasicType) Default() string {
 
 // Tries to cast type A to type B
 func tryCast(a, b Type) bool {
+	if a == b {
+		return true // Skip: They are the same type
+	}
+
 	switch aa := a.(type) {
 	case *PointerType:
 		bb, ok := b.(*PointerType)
 		if !ok { return false }
 
 		// Try to cast with the pointer element type
-		tryCast(aa.base, bb.base)
+		return tryCast(aa.base, bb.base)
 
 	case *BasicType:
 		bb, ok := b.(*BasicType)
@@ -92,6 +108,7 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 	case IntLitType:
 		_, ok := intLitCast[b.name]
 		// fmt.Println("IntLitCast:", a, b, ok)
+		fmt.Println("basictypecast:", a, b, ok)
 		return ok
 	case FloatLitType:
 		_, ok := floatLitCast[b.name]
@@ -116,8 +133,10 @@ func castToInt(n Node) (int, bool) {
 	return 0, false
 }
 
-// List of types that can be cast to int
+// List of all the types that an untypedInt can cast to
 var intLitCast = map[string]bool {
+	IntLitName: true,
+
 	"byte": true,
 	"rune": true,
 

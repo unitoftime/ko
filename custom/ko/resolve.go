@@ -195,12 +195,12 @@ func (r *Resolver) PopScope() {
 func NewResolver() *Resolver {
 	builtin := NewScope()
 	// TODO: FuncTypes
-	builtin.AddIdent("printf", &BuiltinNode{&BasicType{"void", false}})
-	builtin.AddIdent("Assert", &BuiltinNode{&BasicType{"void", false}})
+	builtin.AddIdent("printf", &BuiltinNode{getType(&BasicType{"void", false})})
+	builtin.AddIdent("Assert", &BuiltinNode{getType(&BasicType{"void", false})})
 
 	// Add builtin types
-	builtin.AddIdent("u64", &BuiltinNode{&BasicType{"u64", true}})
-	builtin.AddIdent("int", &BuiltinNode{IntType})
+	builtin.AddIdent("u64", &BuiltinNode{getType(&BasicType{"u64", true})})
+	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
 
 	return &Resolver{
 		builtin: builtin,
@@ -352,7 +352,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			fields[i] = t.ty
 		}
 
-		t.ty = &StructType{t.ident.str, fields}
+		t.ty = getType(&StructType{t.ident.str, fields})
 
 		if r.LocalScope() {
 			r.AddIdent(t.ident.str, t)
@@ -450,13 +450,16 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 	case *Arg:
 		Println("Resolve Arg:", t)
-		r.resolveLocal(t.typeNode)
-		def, ok := r.CheckScope(t.typeNode.Name())
-		if !ok {
-			errUndefinedType(t, t.typeNode.Name())
-		}
-		Println("Resolve Arg... Def:", def)
-		t.ty = def.Type()
+		// r.resolveLocal(t.typeNode)
+		// def, ok := r.CheckScope(t.typeNode.Name())
+		// if !ok {
+		// 	errUndefinedType(t, t.typeNode.Name())
+		// }
+		// Println("Resolve Arg... Def:", def)
+		// t.ty = def.Type()
+
+		t.ty = r.resolveLocal(t.typeNode)
+		Println("Resolve Arg... type:", t.ty)
 
 		return t.ty
 	case *ArgNode:
@@ -536,16 +539,40 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			errUndefinedVar(t, t.name.str)
 		}
 		return n.Type()
+	case *IndexExpr:
+		Println("IndexExpr:", t)
+		objType := r.resolveLocal(t.callee)
+
+		// TODO: Handle other indexable types
+		arrayType, ok := objType.(*ArrayType)
+		if !ok {
+			nodeError(t, fmt.Sprintf("type: %s doesn't support indexing", objType.Name()))
+		}
+		t.ty = arrayType.base
+
+		idxType := r.resolveLocal(t.index)
+		// TODO: Technically only for array/slices: Ensure index type is castable to an int
+		supportedIndexType := IntType
+
+		fmt.Println("idxType", idxType, supportedIndexType)
+		if !tryCast(idxType, supportedIndexType) {
+			nodeError(t, "array index must be castable to an int")
+		}
+
+		return t.ty
+
 	case *AssignExpr:
 		Println("AssignExpr:", t)
 		valType := r.resolveLocal(t.value)
-		n, ok := r.CheckScope(t.name.str)
-		if !ok {
-			errUndefinedVar(t, t.name.str)
-		}
+		// n, ok := r.CheckScope(t.name.str)
+		// if !ok {
+		// 	errUndefinedVar(t, t.name.str)
+		// }
+		objType := r.resolveLocal(t.name)
+		fmt.Println("AssignTypes:", valType, objType)
 
-		objType := n.Type()
-		if tryCast(valType, objType) {
+		// objType := n.Type()
+		if !tryCast(valType, objType) {
 			nodeError(t, fmt.Sprintf("Mismatched assignment types: %s, %s", objType.Name(), valType.Name()))
 		}
 
@@ -592,7 +619,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		case AND:
 			// getting an address of an object
 			// TODO: Check t.ty must be addressable
-			t.ty = &PointerType{t.ty}
+			t.ty = getType(&PointerType{t.ty})
 		}
 
 		return t.ty
@@ -612,7 +639,8 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 	case *CompLitExpr:
 		Println("Resolve.CompLitExpr:", t)
-		t.ty = r.resolveLocal(t.callee)
+		// t.ty = r.resolveLocal(t.callee)
+		t.ty = r.ResolveTypeNodeExpr(t.callee)
 
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
@@ -768,7 +796,7 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 		switch t.op.token {
 		case MUL:
 			// It is a pointer
-			t.ty = &PointerType{t.ty}
+			t.ty = getType(&PointerType{t.ty})
 		// case AND:
 			// TODO: If you ever do reference types like c++
 		}
@@ -797,14 +825,15 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 			// TODO: Slice type
 		} else {
 			lenExpr := r.resolveLocal(t.len)
-			if tryCast(lenExpr, IntType) {
+			if !tryCast(lenExpr, IntType) {
 				nodeError(t, "array length expression must be castable to an int")
 			}
+			r.resolveLocal(t.len)
 
 			lenVal, _ := castToInt(t.len)
 
 			elemType := r.ResolveTypeNodeExpr(t.elem)
-			t.ty = &ArrayType{lenVal, elemType}
+			t.ty = getType(&ArrayType{lenVal, elemType})
 		}
 		return t.ty
 	default:

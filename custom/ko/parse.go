@@ -341,11 +341,11 @@ func (n *LogicalExpr) Type() Type {
 }
 
 type AssignExpr struct {
-	name Token
+	name Node
 	value Node
 }
 func (n *AssignExpr) Pos() Position {
-	return n.name.pos
+	return n.name.Pos()
 }
 func (n *AssignExpr) Type() Type {
 	return UnknownType
@@ -961,16 +961,16 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 		tokens.Next()
 		value := p.Assignment(tokens)
 
-		varExp, validTarget := expr.(*IdentExpr)
-		if validTarget {
-			name := varExp.tok
-			return &AssignExpr{name, value}
+		switch t := expr.(type) {
+		case *IdentExpr:
+			return &AssignExpr{t, value}
+		case *GetExpr:
+			name := t.name
+			return &SetExpr{t.obj, name, value, UnknownType}
+		case *IndexExpr:
+			return &AssignExpr{t, value}
 		}
-		getExp, validTarget := expr.(*GetExpr)
-		if validTarget {
-			name := getExp.name
-			return &SetExpr{getExp.obj, name, value, UnknownType}
-		}
+
 		panic(fmt.Sprintf("INVALID ASSIGNMENT TARGET: %+v", tokens.Peek().token))
 
 	case INC: fallthrough
@@ -995,25 +995,24 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 	return expr
 }
 
-func (p *Parser) CompLit() Node {
-	tokens := p.tokens
-	expr := p.Or()
+// func (p *Parser) CompLit() Node {
+// 	tokens := p.tokens
+// 	expr := p.Or()
 
-	if tokens.Peek().token == EQUAL {
-		tokens.Next()
-		value := p.CompLit()
+// 	if tokens.Peek().token == EQUAL {
+// 		tokens.Next()
+// 		value := p.CompLit()
 
-		varExp, validTarget := expr.(*IdentExpr)
-		if validTarget {
-			name := varExp.tok
-			return &AssignExpr{name, value}
-		}
+// 		varExp, validTarget := expr.(*IdentExpr)
+// 		if validTarget {
+// 			return &AssignExpr{varExp, value}
+// 		}
 
-		panic("INVALID ASSIGNMENT TARGET")
-	}
+// 		panic("INVALID ASSIGNMENT TARGET")
+// 	}
 
-	return expr
-}
+// 	return expr
+// }
 
 func (p *Parser) Or() Node {
 	expr := p.And()
@@ -1234,9 +1233,10 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 			p.Consume(RBRACK)
 		}
 		// Parse Right side
-		elem := p.ParseExpression()
+		elem := p.ParseExprPrimary(p.tokens)
 
 		node := &ArrayNode{lbrack.pos, aLen, elem, UnknownType}
+		fmt.Println("Found ArrayNode:", node, node.elem)
 		return node
 	}
 
