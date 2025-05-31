@@ -117,6 +117,9 @@ func compile(inputFile string) {
 		"-Wwrite-strings", "-Wswitch-enum", "-Wunreachable-code",
 		"-Wmissing-prototypes", "-Wdouble-promotion", "-Wformat=2",
 
+		// DISABLE UNUSED FUNCTION ERRORS
+		"-Wno-unused-function",
+
 		"-o", "./out/run.bin",
 	}
 

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,8 +10,6 @@
         printf("Test passed: %s\n", #cond); \
 } while (0)
 
-
-//--------------------------------------------------------------------------------
 
 /* #include <stdio.h> */
 /* #include <string.h> */
@@ -71,6 +70,7 @@ typedef struct __ko_8int_arr __ko_8int_arr;
 struct __ko_8int_arr {
 	int a[8];
 };
+
 int main (void);
 
 void TestHelloWorld (void);
@@ -141,6 +141,7 @@ int main (void) {
 	TestCallWithStruct();
 	TestScopeNesting();
 	TestPointers();
+	TestArrays();
 	;
 	;
 	;
@@ -311,7 +312,7 @@ void TestArrays (void) {
 	__ko_8int_arr myArray = {0};
 	for (int i = 0; (i < len); (i++)) {
 		Assert((myArray.a[i] == 0));
-		myArray.a[0] = 99;
+		myArray.a[i] = 99;
 	};
 	for (int i = 0; (i < len); (i++)) {
 		Assert((myArray.a[i] == 99));

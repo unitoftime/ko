@@ -61,6 +61,12 @@ func returnArgsToString(node Node) string {
 //go:embed runtime.h
 var runtimeFile string
 
+//go:embed slice.tmpl
+var sliceTemplate string
+type SliceTemplateDef struct {
+	Name string
+	Type string
+}
 
 func (buf *genBuf) Generate(result ParseResult) {
 	// -- Includes --
@@ -96,6 +102,19 @@ func (buf *genBuf) Generate(result ParseResult) {
 		// TODO: You could probably register *special* types you find during typechecking, rather than looping everything
 		buf.PrintGeneratedType(ty)
 	}
+	buf.Line()
+
+	// buf.PrintStructForwardDecl("__ko_int_slice")
+	// buf.Add(";").Line()
+	// tmpl := template.Must(template.New("cslice").Parse(sliceTemplate))
+	// err := tmpl.Execute(buf.buf, SliceTemplateDef{
+	// 	Name: "__ko_int_slice",
+	// 	Type: "int",
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 
 	// Forward Declare all functions
 	for i := range result.fnList {
@@ -161,13 +180,14 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 	}
 }
 
+func (buf *genBuf) PrintStructForwardDecl(name string) {
+	buf.Add("typedef struct ").Add(name).Add(" ").Add(name)
+}
+
 func (buf *genBuf) PrintForwardDecl(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
-		buf.Add("typedef struct ").
-			Add(t.ident.str).
-			Add(" ").
-			Add(t.ident.str)
+		buf.PrintStructForwardDecl(t.ident.str)
 	case *VarStmt:
 		typeStr := typeNameC(t.ty)
 		buf.

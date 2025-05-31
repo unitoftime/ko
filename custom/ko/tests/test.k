@@ -15,6 +15,7 @@ func main() {
 	TestCallWithStruct()
 	TestScopeNesting()
 	TestPointers()
+	TestArrays()
 
 	// runBenchmark()
 
@@ -204,7 +205,7 @@ func TestArrays() {
 
 	for i := 0; i < len; i++ {
 		Assert(myArray[i] == 0)
-		myArray[0] = 99
+		myArray[i] = 99
 	}
 
 	for i := 0; i < len; i++ {
@@ -217,6 +218,10 @@ func TestArrays() {
 		Assert(myArray[i] == 0)
 	}
 }
+
+// func TestSlice() {
+// 	var mySlice []int
+// }
 
 func TestPointers() {
 	y := 5

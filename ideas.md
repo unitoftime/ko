@@ -5,14 +5,14 @@
 - [x] Structs
 - [x] Pointers
 - [x] Arrays
-- [ ] bitshifts: >> << (maybe only allow unsigned types)
-- [ ] bitwise: & | ~ ^
-- [ ] other unaries: +x ^x
 - [ ] Foreign functions
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)
 - [ ] slices <- maybe implement in lang?
 - [ ] Maps <- maybe implement in lang?
 - [ ] Methods
+- [ ] bitshifts: >> << (maybe only allow unsigned types)
+- [ ] bitwise: & | ~ ^
+- [ ] other unaries: +x ^x
 - [ ] Switch statements
 - [ ] else if statements
 - [ ] enums -> I think just generate compile time constants. Maybe iota?

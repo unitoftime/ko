@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,8 +10,6 @@
         printf("Test passed: %s\n", #cond); \
 } while (0)
 
-
-//--------------------------------------------------------------------------------
 
 /* #include <stdio.h> */
 /* #include <string.h> */

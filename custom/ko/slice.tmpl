@@ -1,0 +1,60 @@
+
+struct {{.Name}} {
+    {{.Type}}* data;
+    size_t len;
+    size_t cap;
+};
+
+// Protos
+{{.Name}} {{.Name}}_new(size_t capacity);
+void {{.Name}}_free({{.Name}}* s);
+void {{.Name}}_append({{.Name}}* s, {{.Type}} value);
+{{.Type}} {{.Name}}_get({{.Name}}* s, size_t index);
+void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
+
+{{.Name}} {{.Name}}_new(size_t capacity) {
+    {{.Name}} s;
+    s.data = ({{.Type}}*)malloc(capacity * sizeof({{.Type}}));
+    s.len = 0;
+    s.cap = capacity;
+    return s;
+}
+
+void {{.Name}}_free({{.Name}}* s) {
+    if (s->data != NULL) {
+        free(s->data);
+        s->data = NULL;
+    }
+    s->len = 0;
+    s->cap = 0;
+}
+
+void {{.Name}}_append({{.Name}}* s, {{.Type}} value) {
+    if (s->len >= s->cap) {
+        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
+        {{.Type}}* new_data = ({{.Type}}*)realloc(s->data, new_cap * sizeof({{.Type}}));
+        if (!new_data) {
+            fprintf(stderr, "Out of memory in append()\n");
+            exit(1);
+        }
+        s->data = new_data;
+        s->cap = new_cap;
+    }
+    s->data[s->len++] = value;
+}
+
+{{.Type}} {{.Name}}_get({{.Name}}* s, size_t index) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in get()\n");
+        exit(1);
+    }
+    return s->data[index];
+}
+
+void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in set()\n");
+        exit(1);
+    }
+    s->data[index] = value;
+}
