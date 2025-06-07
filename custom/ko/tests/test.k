@@ -15,8 +15,9 @@ func main() {
 	TestCallWithStruct()
 	TestScopeNesting()
 	TestPointers()
+	TestMalloc()
 	TestArrays()
-
+	TestSlice()
 	// runBenchmark()
 
 
@@ -219,9 +220,13 @@ func TestArrays() {
 	}
 }
 
-// func TestSlice() {
-// 	var mySlice []int
-// }
+func TestSlice() {
+	var mySlice = []int{1, 2, 3}
+	Assert(mySlice[0] == 1)
+	Assert(mySlice[1] == 2)
+	Assert(mySlice[3] == 3)
+	// append(mySlice, 4, 5, 6)
+}
 
 func TestPointers() {
 	y := 5
@@ -230,6 +235,11 @@ func TestPointers() {
 	Assert(*x == 5)
 	printf("Pointer: %d", *x)
 }
+
+// func TestMalloc() {
+// 	var x = ko_byte_malloc(8)
+// 	var y = ko_byte_malloc(8 * sizeof(Point))
+// }
 
 // func backtraceTest(n int) int {
 // 	if n <= 1 {

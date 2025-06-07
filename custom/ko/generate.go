@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 
 	_ "embed"
 )
@@ -159,6 +160,21 @@ func (buf *genBuf) PrintFuncDef(t *FuncNode) {
 
 func (buf *genBuf) PrintGeneratedType(ty Type) {
 	switch t := ty.(type) {
+	case *SliceType:
+		name := typeNameC(ty)
+		elemName := typeNameC(t.base)
+
+		buf.PrintStructForwardDecl(name)
+		buf.Add(";").Line()
+		tmpl := template.Must(template.New("cslice").Parse(sliceTemplate))
+		err := tmpl.Execute(buf.buf, SliceTemplateDef{
+			Name: name,
+			Type: elemName,
+		})
+		if err != nil {
+			panic(err)
+		}
+		buf.Line()
 	case *ArrayType:
 		name := typeNameC(ty)
 
@@ -177,6 +193,7 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 		buf.Add(";").Line()
 		buf.indent--
 		buf.Add("};")
+		buf.Line()
 	}
 }
 
@@ -246,6 +263,8 @@ func (buf *genBuf) PrintDefault(ty Type) {
 		// buf.Add("{{")
 		// buf.PrintDefault(t.base)
 		// buf.Add("}}")
+	case *SliceType:
+		buf.Add("{0}") // TODO: I guess this would end up being ptr=nil, len=0, cap=0
 	case *PointerType:
 		buf.Add("NULL")
 	case *BasicType:
@@ -258,15 +277,14 @@ func (buf *genBuf) PrintDefault(ty Type) {
 
 func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
 	ty := c.Type()
-	if buf.indent > 0 {
-		// Global variables use a different composit lit syntax
-		buf.Add("(").
-			Add(typeNameC(c.ty)).
-			Add(")")
-	}
-
 	switch t := ty.(type) {
 	case *StructType:
+		if buf.indent > 0 {
+			// Global variables use a different composit lit syntax
+			buf.Add("(").
+				Add(typeNameC(c.ty)).
+				Add(")")
+		}
 		buf.Add("{ ")
 		for i := range t.fields {
 			arg := c.GetArg(i)
@@ -282,6 +300,12 @@ func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
 		}
 		buf.Add(" }")
 	case *ArrayType:
+		if buf.indent > 0 {
+			// Global variables use a different composit lit syntax
+			buf.Add("(").
+				Add(typeNameC(c.ty)).
+				Add(")")
+		}
 		if c.args == nil {
 			buf.PrintDefault(t)
 		} else {
@@ -299,6 +323,29 @@ func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
 				}
 			}
 			buf.Add(" }}")
+		}
+	case *SliceType:
+		if c.args == nil {
+			buf.PrintDefault(t)
+		} else {
+			// buf.Add("__ko_int_slice_init((int[]){1, 2, 3, 4}, 4)")
+			buf.Add("__ko_int_slice_init(")
+			// arrayCL := *c
+			// arrayCL.ty = &ArrayType{len: len(c.args), base: t.base}
+			buf.Add("(").Add(typeNameC(t.base)).Add("[]){")
+			for i := range len(c.args) {
+				arg := c.GetArg(i)
+				if arg != nil {
+					buf.Print(arg)
+				} else {
+					buf.PrintDefault(t.base)
+				}
+
+				if i < len(c.args)-1 {
+					buf.Add(", ")
+				}
+			}
+			buf.Add("}").Add(", ").Add(fmt.Sprintf("%d", len(c.args))).Add(")")
 		}
 	default:
 		panic(fmt.Sprintf("Unhandled Type: %T", ty))
@@ -322,6 +369,26 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 	buf.indent--
 
 	buf.Add("}")
+}
+
+func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
+	buf.Print(t.callee)
+	buf.Add(".a[")
+	buf.Print(t.index)
+	buf.Add("]")
+
+	// switch t.callee.Type().(type) {
+	// case *ArrayType:
+	// 	buf.Print(t.callee)
+	// 	buf.Add(".a[")
+	// 	buf.Print(t.index)
+	// 	buf.Add("]")
+	// case *SliceType:
+	// 	buf.Print(t.callee)
+	// 	buf.Add(".data[")
+	// 	buf.Print(t.index)
+	// 	buf.Add("]")
+	// }
 }
 
 func (buf *genBuf) PrintBinaryExpr(t *BinaryExpr) {
@@ -464,10 +531,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.PrintBinaryExpr(t)
 
 	case *IndexExpr:
-		buf.Print(t.callee)
-		buf.Add(".a[")
-		buf.Print(t.index)
-		buf.Add("]")
+		buf.PrintIndexExpr(t)
 
 	case *PostfixStmt:
 		buf.Add("(")
@@ -606,6 +670,8 @@ func typeNameC(ty Type) string {
 	case *ArrayType:
 		return fmt.Sprintf("__ko_%d%s_arr", t.len, typeNameC(t.base))
 		// return typeNameC(t.base)
+	case *SliceType:
+		return fmt.Sprintf("__ko_%s_slice", typeNameC(t.base))
 	default:
 		panic(fmt.Sprintf("Unknown Type: %T", ty))
 	}

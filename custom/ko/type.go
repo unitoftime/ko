@@ -55,6 +55,16 @@ func (t *ArrayType) Name() string {
 	return fmt.Sprintf("[%d]%s", t.len, t.base.Name())
 }
 
+type SliceType struct {
+	base Type
+}
+func (t *SliceType) Underlying() Type {
+	return t
+}
+func (t *SliceType) Name() string {
+	return fmt.Sprintf("[]%s", t.base.Name())
+}
+
 
 type BasicType struct {
 	name string // The name of the type
@@ -142,6 +152,8 @@ var intLitCast = map[string]bool {
 
 	"int": true,
 	"uint": true,
+	"uintptr": true,
+
 	"u8": true,
 	"uint8": true,
 	"u16": true,
@@ -216,7 +228,7 @@ var (
 // const AutoType = "auto"
 
 // Map from ko types to C equivalent types
-var typeMap = map[string]string{
+var koToCMap = map[string]string{
 	// Default unresolved lits
 	IntLitName: "int",
 	FloatLitName: "float",
@@ -228,7 +240,7 @@ var typeMap = map[string]string{
 	"int": "int", // TODO: Correct?
 	"uint": "uint", // TODO: Correct?
 
-	// "uintptr": TODO
+	"uintptr": "size_t",
 
 	"f32": "float",
 	"float32": "float",
@@ -266,7 +278,7 @@ func typeStr(in Type) string {
 		panic("BLANK TYPE")
 	}
 
-	ret, ok := typeMap[in.Name()]
+	ret, ok := koToCMap[in.Name()]
 	if !ok {
 		return string(in.Name()) // If it wasn't a builtin type, then it probably came from a custom type
 	}

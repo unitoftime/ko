@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define Assert(cond) do { \
     if (!(cond)) \
@@ -10,6 +11,8 @@
         printf("Test passed: %s\n", #cond); \
 } while (0)
 
+
+#define ko_byte_malloc(size) ((uint8_t*)malloc(size))
 
 /* #include <stdio.h> */
 /* #include <string.h> */

@@ -197,10 +197,21 @@ func NewResolver() *Resolver {
 	// TODO: FuncTypes
 	builtin.AddIdent("printf", &BuiltinNode{getType(&BasicType{"void", false})})
 	builtin.AddIdent("Assert", &BuiltinNode{getType(&BasicType{"void", false})})
+	builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
+	builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
 
 	// Add builtin types
+	builtin.AddIdent("u8", &BuiltinNode{getType(&BasicType{"u8", true})})
+	builtin.AddIdent("u16", &BuiltinNode{getType(&BasicType{"u16", true})})
+	builtin.AddIdent("u32", &BuiltinNode{getType(&BasicType{"u32", true})})
 	builtin.AddIdent("u64", &BuiltinNode{getType(&BasicType{"u64", true})})
+	builtin.AddIdent("i8", &BuiltinNode{getType(&BasicType{"i8", true})})
+	builtin.AddIdent("i16", &BuiltinNode{getType(&BasicType{"i16", true})})
+	builtin.AddIdent("i32", &BuiltinNode{getType(&BasicType{"i32", true})})
+	builtin.AddIdent("i64", &BuiltinNode{getType(&BasicType{"i64", true})})
+
 	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
+	builtin.AddIdent("uintptr", &BuiltinNode{getType(IntType)})
 
 	return &Resolver{
 		builtin: builtin,
@@ -543,12 +554,14 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		Println("IndexExpr:", t)
 		objType := r.resolveLocal(t.callee)
 
-		// TODO: Handle other indexable types
-		arrayType, ok := objType.(*ArrayType)
-		if !ok {
+		switch ot := objType.(type) {
+		case *ArrayType:
+			t.ty = ot.base
+		case *SliceType:
+			t.ty = ot.base
+		default:
 			nodeError(t, fmt.Sprintf("type: %s doesn't support indexing", objType.Name()))
 		}
-		t.ty = arrayType.base
 
 		idxType := r.resolveLocal(t.index)
 		// TODO: Technically only for array/slices: Ensure index type is castable to an int
@@ -823,6 +836,8 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 	case *ArrayNode:
 		if t.len == nil {
 			// TODO: Slice type
+			elemType := r.ResolveTypeNodeExpr(t.elem)
+			t.ty = getType(&SliceType{elemType})
 		} else {
 			lenExpr := r.resolveLocal(t.len)
 			if !tryCast(lenExpr, IntType) {
