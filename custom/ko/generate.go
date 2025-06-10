@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"html/template"
 
@@ -9,7 +9,8 @@ import (
 )
 
 type genBuf struct {
-	buf *bytes.Buffer
+	// buf *bytes.Buffer
+	buf *bufio.Writer
 	indent int
 	newline bool
 }
@@ -38,9 +39,9 @@ func (b *genBuf) LineDirective(pos Position) *genBuf {
 	return b
 }
 
-func (b *genBuf) String() string {
-	return b.buf.String()
-}
+// func (b *genBuf) String() string {
+// 	return b.buf.String()
+// }
 
 // TODO: if a tuple, then return a struct
 func returnArgsToString(node Node) string {
@@ -88,8 +89,8 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 	// Forward Declare all types
 	for _, node := range result.typeList {
-		buf.PrintForwardDecl(node)
-		buf.Add(";").Line()
+		add := buf.PrintForwardDecl(node)
+		if add { buf.Add(";").Line() }
 
 		structNode, isStruct := node.(*StructNode)
 		if isStruct {
@@ -119,8 +120,8 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 	// Forward Declare all functions
 	for i := range result.fnList {
-		buf.PrintForwardDecl(result.fnList[i])
-		buf.Add(";").Line()
+		add := buf.PrintForwardDecl(result.fnList[i])
+		if add { buf.Add(";").Line() }
 	}
 
 	// Complete all types
@@ -137,8 +138,8 @@ func (buf *genBuf) Generate(result ParseResult) {
 	// Declare all global variables
 	for i := range result.varList {
 		buf.LineDirective(result.varList[i].name.pos)
-		buf.PrintForwardDecl(result.varList[i])
-		buf.Add(";").Line()
+		add := buf.PrintForwardDecl(result.varList[i])
+		if add { buf.Add(";").Line() }
 	}
 
 	buf.Print(result.file)
@@ -201,7 +202,7 @@ func (buf *genBuf) PrintStructForwardDecl(name string) {
 	buf.Add("typedef struct ").Add(name).Add(" ").Add(name)
 }
 
-func (buf *genBuf) PrintForwardDecl(n Node) {
+func (buf *genBuf) PrintForwardDecl(n Node) bool {
 	switch t := n.(type) {
 	case *StructNode:
 		buf.PrintStructForwardDecl(t.ident.str)
@@ -214,11 +215,16 @@ func (buf *genBuf) PrintForwardDecl(n Node) {
 			Add(" = ")
 		buf.Print(t.initExpr)
 	case *FuncNode:
+		if t.body == nil { return false }
+
 		buf.LineDirective(t.pos)
 		buf.PrintFuncDef(t)
+
 	default:
 		panic(fmt.Sprintf("PrintForwardDecl: Unknown NodeType: %T", t))
 	}
+
+	return true
 }
 
 func (buf *genBuf) PrintCompleteType(n Node) {
@@ -392,7 +398,6 @@ func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
 }
 
 func (buf *genBuf) PrintBinaryExpr(t *BinaryExpr) {
-	fmt.Println("HERERERE:", t.left.Type(), t.right.Type())
 	if useCustomEqualityFunc(t.left.Type()) {
 		ty := t.left.Type()
 		buf.Add("(")
@@ -424,6 +429,8 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add("// ").Add("package ").Add(t.name).
 			Line()
 	case *CommentNode:
+	case *ForeignScope:
+		// Skip: Externally defined
 	case *StructNode:
 		if !t.global {
 			buf.Add("typedef ")

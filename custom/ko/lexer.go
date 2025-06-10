@@ -53,6 +53,8 @@ const (
 	COLON // :
 	WALRUS // :=
 
+	HASH // #
+
 	// Literals
 	IDENT
 	INT
@@ -72,6 +74,7 @@ const (
 	FOR
 	TRUE
 	FALSE
+	FOREIGN
   // AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
   // PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
 )
@@ -92,6 +95,7 @@ var tokens = []string{
 	RBRACE: "}",
 	LBRACK: "[",
 	RBRACK: "]",
+	HASH: "#",
 
 	// One or two character
 	ADD: "ADD",
@@ -121,6 +125,7 @@ var tokens = []string{
 	STRING:     "STRING",
 	LINECOMMENT: "LINECOMMENT",
 
+
 	// Keywords
 	PACKAGE: "package",
 	FUNC: "func",
@@ -133,6 +138,7 @@ var tokens = []string{
 	FOR: "for",
 	TRUE: "true",
 	FALSE: "false",
+	FOREIGN: "foreign",
 }
 var keywordList = map[string]TokenType{
 	tokens[PACKAGE]: PACKAGE,
@@ -146,6 +152,7 @@ var keywordList = map[string]TokenType{
 	tokens[FOR]: FOR,
 	tokens[TRUE]: TRUE,
 	tokens[FALSE]: FALSE,
+	tokens[FOREIGN]: FOREIGN,
 }
 
 
@@ -231,6 +238,9 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		case ']':
 			l.lastToken = RBRACK
 			return l.pos, RBRACK, "]"
+		case '#':
+			l.lastToken = HASH
+			return l.pos, HASH, "#"
 
 			//--------------------------------------------------------------------------------
 			// - One or two tokens

@@ -117,12 +117,12 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 	switch a {
 	case IntLitType:
 		_, ok := intLitCast[b.name]
-		// fmt.Println("IntLitCast:", a, b, ok)
-		fmt.Println("basictypecast:", a, b, ok)
+		// Println("IntLitCast:", a, b, ok)
+		Println("basictypecast:", a, b, ok)
 		return ok
 	case FloatLitType:
 		_, ok := floatLitCast[b.name]
-		// fmt.Println("FloatLitCast:", a, b, ok)
+		// Println("FloatLitCast:", a, b, ok)
 		return ok
 	}
 	return false
@@ -382,7 +382,7 @@ func typeStr(in Type) string {
 // }
 
 // func (r *Resolver) isComparable(n Node) bool {
-// 	// fmt.Printf("isComparable: %T\n", n)
+// 	// Printf("isComparable: %T\n", n)
 
 // 	switch t := n.(type) {
 // 	case *StructNode:

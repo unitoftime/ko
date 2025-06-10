@@ -1,10 +1,11 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 )
 
 const BuildDirectory = "./out/"
@@ -61,10 +62,14 @@ func localCmd(dir, name string, args ...string) error {
 }
 
 func compile(inputFile string) {
+	fmt.Println("Compile:", inputFile)
 	file, err := os.Open(inputFile)
 	if err != nil { panic(err) }
 	defer file.Close()
 
+	now := time.Now()
+
+	fmt.Printf("Lexer: ")
 	tokens := make([]Token, 0)
 	lexer := NewLexer(inputFile, file)
 	for {
@@ -77,24 +82,48 @@ func compile(inputFile string) {
 		}
 	}
 
+	fmt.Println(time.Since(now))
+	now = time.Now()
+	fmt.Printf("Parsing: ")
 	tokenList := &Tokens{list: tokens}
 	parser := NewParser(tokenList)
 	result := parser.Parse(inputFile)
 
+	fmt.Println(time.Since(now))
+	now = time.Now()
+	fmt.Printf("Resolving: ")
 	resolver := NewResolver()
 	resolver.Resolve(result)
 
-	buf := &genBuf{
-		buf: new(bytes.Buffer),
-	}
-	buf.Generate(result)
 
+	fmt.Println(time.Since(now))
+	now = time.Now()
+	fmt.Printf("Generating: ")
 	err = os.MkdirAll(BuildDirectory, 0700)
 	if err != nil { panic(err) }
 
-	// fmt.Println(buf.String())
-	err = os.WriteFile(BuildDirectory + "main.c", buf.buf.Bytes(), 0644)
-	if err != nil { panic(err) }
+	outFile, err := os.Create(BuildDirectory + "main.c")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	writer := bufio.NewWriter(outFile)
+
+	buf := &genBuf{
+		// buf: new(bytes.Buffer),
+		buf: writer,
+	}
+	buf.Generate(result)
+
+	err = writer.Flush()
+	if err != nil {
+		panic(err)
+	}
+
+
+	// // fmt.Println(buf.String())
+	// err = os.WriteFile(BuildDirectory + "main.c", buf.buf.Bytes(), 0644)
+	// if err != nil { panic(err) }
 
 	// FLAG_BASIC=-Wall -Wextra -Werror
 	// FLAG_UB=-Wpedantic -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer
@@ -104,6 +133,9 @@ func compile(inputFile string) {
 
 	// FLAGS=-g ${FLAG_BASIC} ${FLAG_UB} ${FLAG_STRICT}
 
+	fmt.Println(time.Since(now))
+	now = time.Now()
+	fmt.Printf("Running C Compiler: ")
 	cc := "gcc"
 	args := []string{
 		"./out/main.c",
@@ -127,4 +159,6 @@ func compile(inputFile string) {
 
 	err = localCmd("./", cc, args...)
 	if err != nil { panic(err) }
+
+	fmt.Println(time.Since(now))
 }

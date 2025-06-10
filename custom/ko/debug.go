@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var Debug = true // Toggle this to enable/disable debug output
+var Debug = false // Toggle this to enable/disable debug output
 
 func Printf(format string, a ...any) {
 	if Debug {

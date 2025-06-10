@@ -56,7 +56,7 @@ type FuncNode struct {
 	name string
 	arguments *ArgNode
 	returns *ArgNode
-	body Node
+	body *CurlyScope
 	ty Type
 }
 func (n *FuncNode) Pos() Position {
@@ -77,6 +77,17 @@ func (n *StructNode) Pos() Position {
 }
 func (n *StructNode) Type() Type {
 	return n.ty
+}
+
+type ForeignScope struct {
+	tok Token
+	body *CurlyScope
+}
+func (n *ForeignScope) Pos() Position {
+	return n.tok.pos
+}
+func (n *ForeignScope) Type() Type {
+	return UnknownType
 }
 
 type ScopeNode struct {
@@ -516,7 +527,7 @@ func NewParser(tokens *Tokens) *Parser {
 	}
 }
 func (p *Parser) PrintNext() {
-	fmt.Println(p.tokens.Peek())
+	Println(p.tokens.Peek())
 }
 
 func (p *Parser) Next() Token {
@@ -580,6 +591,8 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 		return p.TypeDeclNode(globalScope)
 	case FUNC:
 		return p.ParseFuncNode(globalScope)
+	case FOREIGN:
+		return p.ParseForeignBlock(globalScope)
 
 	case RETURN:
 		return p.ParseReturnNode(tokens)
@@ -597,8 +610,12 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 			printErr(next, fmt.Sprintf("Unexpected identifier in global scope: %s", next.str))
 		}
 		return p.parseStatement()
+	case MUL:
+		return p.parseStatement()
 	case LBRACE:
-		return &ScopeNode{p.ParseCurlyScope()}
+		return &ScopeNode{p.ParseCurlyScope(false)}
+	// case HASH:
+	// 	return p.parseDirective()
 	case LINECOMMENT:
 		next := tokens.Next() // Discard
 		return &CommentNode{next.pos, next.str}
@@ -645,8 +662,13 @@ func (p *Parser) TypeDeclNode(globalScope bool) Node {
 			field := p.Consume(IDENT)
 			// kind := p.Consume(IDENT)
 			typeNode := p.ParseTypeNode()
-			p.Consume(SEMI)
 			fields = append(fields, &Arg{field, typeNode, UnknownType})
+
+			if p.Match(RBRACE) {
+				break
+			}
+
+			p.Consume(SEMI)
 		}
 
 		s := &StructNode{
@@ -683,15 +705,17 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 	{
 		next := tokens.Peek()
 		switch next.token {
+		case SEMI:
+			// Has no body or return args
+		case LBRACE:
+			// If we see { then there is no return type
 		case LPAREN:
 			// If (..) then parse the full arg node
 			returns = p.ParseArgNode()
-		case LBRACE:
-			// If we see { then there is no return type
 		default:
 			// Else just parse a single typeNode
 			typeNode := p.ParseTypeNode()
-			fmt.Println("TYPENODE:", typeNode.node)
+			Println("TYPENODE:", typeNode.node)
 			returns = &ArgNode{next.pos, []*Arg{
 				{
 					name: Token{}, // TODO: Unnamed, nil?
@@ -701,8 +725,11 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 		}
 	}
 
+	var body *CurlyScope
+	if p.Peek().token == LBRACE {
+		body = p.ParseCurlyScope(false)
+	}
 
-	body := p.ParseCurlyScope()
 	f := FuncNode{
 		pos: funcToken.pos,
 		name: next.str,
@@ -718,14 +745,24 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 	return &f
 }
 
-func (p *Parser) ParseCurlyScope() *CurlyScope {
+
+func (p *Parser) ParseForeignBlock(globalScope bool) Node {
+	foreign := p.Next()
+	body := p.ParseCurlyScope(globalScope)
+	return &ForeignScope{
+		tok: foreign,
+		body: body,
+	}
+}
+
+func (p *Parser) ParseCurlyScope(globalScope bool) *CurlyScope {
 	tokens := p.tokens
 	next := tokens.Next()
 	if next.token != LBRACE {
 		panic(parseError(LBRACE, next))
 	}
 
-	body := p.ParseTil(RBRACE, false)
+	body := p.ParseTil(RBRACE, globalScope)
 
 	return &CurlyScope{next.pos, body}
 }
@@ -836,6 +873,7 @@ func (p *Parser) ParseTypedArg(tokens *Tokens) *Arg {
 // 	return &expr
 // }
 
+
 func (p *Parser) parseStatement() Node {
 	switch p.Peek().token {
 	case IDENT:
@@ -870,7 +908,7 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 		typeSpec = p.ParseTypeNode()
 	}
 
-	fmt.Println(initExpr)
+	Println(initExpr)
 
 	p.Consume(SEMI)
 	stmt := &VarStmt{name, globalScope, typeSpec, initExpr, UnknownType}
@@ -895,12 +933,12 @@ func (p *Parser) ifStatement(tokens *Tokens) Node {
 	defer func() { p.blockCompLit = false }()
 	cond := p.parseStatement()
 
-	thenScope := p.ParseCurlyScope()
+	thenScope := p.ParseCurlyScope(false)
 
 	var elseScope Node
 	if tokens.Peek().token == ELSE {
 		tokens.Next()
-		elseScope = p.ParseCurlyScope()
+		elseScope = p.ParseCurlyScope(false)
 	}
 
 	return &IfStmt{cond, thenScope, elseScope}
@@ -936,7 +974,7 @@ func (p *Parser) forStatement() Node {
 		inc = p.parseStatement()
 	}
 
-	body := p.ParseCurlyScope()
+	body := p.ParseCurlyScope(false)
 
 	return &ForStmt{forTok, init, cond, inc, body}
 
@@ -969,9 +1007,11 @@ func (p *Parser) Assignment(tokens *Tokens) Node {
 			return &SetExpr{t.obj, name, value, UnknownType}
 		case *IndexExpr:
 			return &AssignExpr{t, value}
+		case *UnaryExpr:
+			return &AssignExpr{t, value}
 		}
 
-		panic(fmt.Sprintf("INVALID ASSIGNMENT TARGET: %+v", tokens.Peek().token))
+		panic(fmt.Sprintf("INVALID ASSIGNMENT TARGET: %T", expr))
 
 	case INC: fallthrough
 	case DEC:
@@ -1236,7 +1276,7 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 		elem := p.ParseExprPrimary(p.tokens)
 
 		node := &ArrayNode{lbrack.pos, aLen, elem, UnknownType}
-		fmt.Println("Found ArrayNode:", node, node.elem)
+		Println("Found ArrayNode:", node, node.elem)
 		return node
 	}
 

@@ -22,5 +22,8 @@ tcc: build
 run: rebuild-ko
 	ko run ./tests/test.k
 
+run-1m: rebuild-ko
+	ko run ./tests/1m/main.k
+
 rebuild-ko:
 	go install .

@@ -75,23 +75,23 @@ func (r *Resolver) AddIdent(name string, n Node) {
 
 // TODO: Resolve selector path?
 func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
-	fmt.Println("---")
-	fmt.Println("CheckScopeField:", obj, field)
+	Println("---")
+	Println("CheckScopeField:", obj, field)
 
 	switch t := obj.(type) {
 	case *GetExpr:
-		fmt.Println("CheckField:.GetExpr:", t.obj, t.name.str, field)
+		Println("CheckField:.GetExpr:", t.obj, t.name.str, field)
 		// return r.CheckScopeField(t.obj, field)
 		left, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
 			panic("AAA")
 		}
-		fmt.Printf("CheckField.Left: %T, %v\n", left, left)
+		Printf("CheckField.Left: %T, %v\n", left, left)
 		ret, ok := r.CheckScopeField(left, field)
-		fmt.Println("Returning:", ret)
+		Println("Returning:", ret)
 		return ret, ok
 	case *IdentExpr:
-		fmt.Println("CheckField.IdentExpr:", t, field)
+		Println("CheckField.IdentExpr:", t, field)
 		n, ok := r.CheckScope(t.tok.str)
 		if !ok {
 			errUndefinedVar(n, t.tok.str)
@@ -103,17 +103,17 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 			errUndefinedType(structNode, strType.Name())
 		}
 
-		fmt.Println("StructNode: ", t, field)
+		Println("StructNode: ", t, field)
 		return getField(structNode, field)
 	case *Arg:
-		fmt.Println("CheckField:.Arg:", t, t.Type().Name(), field)
+		Println("CheckField:.Arg:", t, t.Type().Name(), field)
 		argTypeName := t.Type().Name()
 		structNode, ok := r.CheckScope(argTypeName)
 		if !ok {
 			errUndefinedType(structNode, argTypeName)
 		}
 		ret, ok := getField(structNode, field)
-		fmt.Println("CheckField:.Arg.Return:", ret, ok)
+		Println("CheckField:.Arg.Return:", ret, ok)
 		return ret, ok
 	default:
 		panic(fmt.Sprintf("Resolve: Unknown NodeType: %T", t))
@@ -125,10 +125,10 @@ func getField(n Node, field string) (Node, bool) {
 
 	switch t := n.(type) {
 	case *StructNode:
-		fmt.Println("getField:", t, field)
+		Println("getField:", t, field)
 		for i := range t.fields {
 			if t.fields[i].name.str == field {
-				fmt.Println("Found Field:", t.fields[i])
+				Println("Found Field:", t.fields[i])
 				return t.fields[i], true
 			}
 		}
@@ -212,6 +212,7 @@ func NewResolver() *Resolver {
 
 	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("uintptr", &BuiltinNode{getType(IntType)})
+	builtin.AddIdent("usize", &BuiltinNode{getType(IntType)})
 
 	return &Resolver{
 		builtin: builtin,
@@ -270,14 +271,16 @@ func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 	if t.returns == nil || len(t.returns.args) == 0 {
 		t.ty = VoidType
 	} else {
-		r.resolveLocal(t.returns.args[0])
-		retName := t.returns.args[0].typeNode.Name()
-		retNode, ok := r.CheckScope(retName)
-		if !ok {
-			errUndefinedType(t, retName)
-		}
-		t.ty = r.resolveLocal(retNode)
-		Println("ResolveGlobal:", t, t.ty)
+		t.ty = r.resolveLocal(t.returns.args[0])
+
+		// r.resolveLocal(t.returns.args[0])
+		// retName := t.returns.args[0].typeNode.Name()
+		// retNode, ok := r.CheckScope(retName)
+		// if !ok {
+		// 	errUndefinedType(t, retName)
+		// }
+		// t.ty = r.resolveLocal(retNode)
+		// Println("ResolveGlobal:", t, t.ty)
 	}
 }
 
@@ -351,6 +354,8 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// Skip
 	case *CommentNode:
 		// Skip
+	case *ForeignScope:
+		r.resolveLocal(t.body)
 	case *StructNode:
 		if t.ty != UnknownType {
 			return t.ty
@@ -393,8 +398,10 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			}
 		}
 
-		Println("t.body")
-		r.resolveLocal(t.body)
+		Println("t.body", t.body)
+		if t.body != nil {
+			r.resolveLocal(t.body)
+		}
 
 		r.PopScope()
 
@@ -567,7 +574,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// TODO: Technically only for array/slices: Ensure index type is castable to an int
 		supportedIndexType := IntType
 
-		fmt.Println("idxType", idxType, supportedIndexType)
+		Println("idxType", idxType, supportedIndexType)
 		if !tryCast(idxType, supportedIndexType) {
 			nodeError(t, "array index must be castable to an int")
 		}
@@ -582,7 +589,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// 	errUndefinedVar(t, t.name.str)
 		// }
 		objType := r.resolveLocal(t.name)
-		fmt.Println("AssignTypes:", valType, objType)
+		Println("AssignTypes:", valType, objType)
 
 		// objType := n.Type()
 		if !tryCast(valType, objType) {
@@ -830,7 +837,7 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 		}
 
 		t.ty = node.Type()
-		fmt.Println("TYPETYPETYPE: ", node.Type())
+		Println("TYPETYPETYPE: ", node.Type())
 
 		return t.ty
 	case *ArrayNode:

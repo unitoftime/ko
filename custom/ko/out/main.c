@@ -69,74 +69,6 @@ typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 typedef struct Rect Rect;
 bool __ko_Rect_equality(Rect a, Rect b);
-typedef struct __ko_int_slice __ko_int_slice;
-
-struct __ko_int_slice {
-    int* a;
-    size_t len;
-    size_t cap;
-};
-
-// Protos
-__ko_int_slice __ko_int_slice_new(size_t capacity);
-__ko_int_slice __ko_int_slice_init(const int* values, size_t count);
-void __ko_int_slice_free(__ko_int_slice* s);
-void __ko_int_slice_append(__ko_int_slice* s, int value);
-int __ko_int_slice_get(__ko_int_slice* s, size_t index);
-void __ko_int_slice_set(__ko_int_slice* s, size_t index, int value);
-
-__ko_int_slice __ko_int_slice_new(size_t capacity) {
-    __ko_int_slice s;
-    s.a = (int*)malloc(capacity * sizeof(int));
-    s.len = 0;
-    s.cap = capacity;
-    return s;
-}
-__ko_int_slice __ko_int_slice_init(const int* values, size_t count) {
-  __ko_int_slice s = __ko_int_slice_new(sizeof(int) * count);
-  memcpy(s.a, values, sizeof(int) * count);
-  return s;
-}
-
-void __ko_int_slice_free(__ko_int_slice* s) {
-    if (s->a != NULL) {
-        free(s->a);
-        s->a = NULL;
-    }
-    s->len = 0;
-    s->cap = 0;
-}
-
-void __ko_int_slice_append(__ko_int_slice* s, int value) {
-    if (s->len >= s->cap) {
-        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
-        int* new_data = (int*)realloc(s->a, new_cap * sizeof(int));
-        if (!new_data) {
-            fprintf(stderr, "Out of memory in append()\n");
-            exit(1);
-        }
-        s->a = new_data;
-        s->cap = new_cap;
-    }
-    s->a[s->len++] = value;
-}
-
-int __ko_int_slice_get(__ko_int_slice* s, size_t index) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in get()\n");
-        exit(1);
-    }
-    return s->a[index];
-}
-
-void __ko_int_slice_set(__ko_int_slice* s, size_t index, int value) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in set()\n");
-        exit(1);
-    }
-    s->a[index] = value;
-}
-
 typedef struct __ko_8int_arr __ko_8int_arr;
 struct __ko_8int_arr {
 	int a[8];
@@ -144,6 +76,8 @@ struct __ko_8int_arr {
 
 
 int main (void);
+
+void GenerateCode (void);
 
 void TestHelloWorld (void);
 
@@ -177,8 +111,6 @@ void TestScopeNesting (void);
 
 void TestArrays (void);
 
-void TestSlice (void);
-
 void TestPointers (void);
 
 void TestMalloc (void);
@@ -203,6 +135,7 @@ Point globPoint = { 2, 3 };
 // package main
 
 int main (void) {
+	;
 	TestHelloWorld();
 	TestVariablesAndArithmetic();
 	TestUnaryOperators();
@@ -219,11 +152,19 @@ int main (void) {
 	TestPointers();
 	TestMalloc();
 	TestArrays();
-	TestSlice();
+	;
 	;
 	;
 	;
 return __mainRet__;
+}
+
+void GenerateCode (void) {
+	int max = 100000;
+	for (int i = 0; (i < max); (i++)) {
+		printf("type TestStruct%d struct { a int }\n", i);
+		printf("func TestFunc%d(val int) int { return val }\n", i);
+	};
 }
 
 void TestHelloWorld (void) {
@@ -402,22 +343,19 @@ void TestArrays (void) {
 	};
 }
 
-void TestSlice (void) {
-	__ko_int_slice mySlice = __ko_int_slice_init((int[]){1, 2, 3}, 3);
-	Assert((mySlice.a[0] == 1));
-	Assert((mySlice.a[1] == 2));
-	Assert((mySlice.a[3] == 3));
-	;
-}
-
 void TestPointers (void) {
 	int y = 5;
 	int* x = NULL;
 	x = (&y);
 	Assert(((*x) == 5));
-	printf("Pointer: %d", (*x));
+	printf("Pointer: %d\n", (*x));
 }
 
 void TestMalloc (void) {
-	uint8_t* x = ko_byte_malloc(8);
+	uint8_t* x = malloc(1);
+	(*x) = 5;
+	free(x);
+	;
+	;
+	;
 }

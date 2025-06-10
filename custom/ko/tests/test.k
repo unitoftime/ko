@@ -1,6 +1,19 @@
 package main
 
+	// builtin.AddIdent("printf", &BuiltinNode{getType(&BasicType{"void", false})})
+	// builtin.AddIdent("Assert", &BuiltinNode{getType(&BasicType{"void", false})})
+	// builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
+	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
+
+foreign {
+	func malloc(size usize) *u8
+	func free(ptr *u8)
+	// func sizeof[T](T) usize // TODO: bad return type
+}
+
 func main() {
+	// GenerateCode()
+
 	TestHelloWorld()
 	TestVariablesAndArithmetic()
 	TestUnaryOperators()
@@ -17,12 +30,19 @@ func main() {
 	TestPointers()
 	TestMalloc()
 	TestArrays()
-	TestSlice()
+	// TestSlice()
 	// runBenchmark()
-
 
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
 	// closure()
+}
+
+func GenerateCode() {
+	max := 100000
+	for i := 0; i < max; i++ {
+		printf("type TestStruct%d struct { a int }\n", i)
+		printf("func TestFunc%d(val int) int { return val }\n", i)
+	}
 }
 
 func TestHelloWorld() {
@@ -220,26 +240,31 @@ func TestArrays() {
 	}
 }
 
-func TestSlice() {
-	var mySlice = []int{1, 2, 3}
-	Assert(mySlice[0] == 1)
-	Assert(mySlice[1] == 2)
-	Assert(mySlice[3] == 3)
-	// append(mySlice, 4, 5, 6)
-}
+// func TestSlice() {
+// 	var mySlice = []int{1, 2, 3}
+// 	Assert(mySlice[0] == 1)
+// 	Assert(mySlice[1] == 2)
+// 	Assert(mySlice[3] == 3)
+// 	// append(mySlice, 4, 5, 6)
+// }
 
 func TestPointers() {
 	y := 5
 	var x *int
 	x = &y
 	Assert(*x == 5)
-	printf("Pointer: %d", *x)
+	printf("Pointer: %d\n", *x)
 }
 
-// func TestMalloc() {
-// 	var x = ko_byte_malloc(8)
-// 	var y = ko_byte_malloc(8 * sizeof(Point))
-// }
+func TestMalloc() {
+	var x = malloc(1)
+	*x = 5
+	free(x)
+	// var y = malloc(8 * sizeof(Point))
+
+	// var x = ko_byte_malloc(8)
+	// var y = ko_byte_malloc(8 * sizeof(Point))
+}
 
 // func backtraceTest(n int) int {
 // 	if n <= 1 {
