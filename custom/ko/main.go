@@ -102,12 +102,21 @@ func compile(inputFile string) {
 	err = os.MkdirAll(BuildDirectory, 0700)
 	if err != nil { panic(err) }
 
-	outFile, err := os.Create(BuildDirectory + "main.c")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
+	// TODO: If: Output file
+	// outFile, err := os.Create(BuildDirectory + "main.c")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer file.Close()
+	// writer := bufio.NewWriter(outFile)
+
+	cmd := pipeCompile()
+	outFile, err := cmd.StdinPipe()
+	if err != nil { panic(err) }
 	writer := bufio.NewWriter(outFile)
+
+	err = cmd.Start()
+	if err != nil { panic(err) }
 
 	buf := &genBuf{
 		// buf: new(bytes.Buffer),
@@ -120,6 +129,8 @@ func compile(inputFile string) {
 		panic(err)
 	}
 
+	err = outFile.Close()
+	if err != nil { panic(err) }
 
 	// // fmt.Println(buf.String())
 	// err = os.WriteFile(BuildDirectory + "main.c", buf.buf.Bytes(), 0644)
@@ -136,11 +147,49 @@ func compile(inputFile string) {
 	fmt.Println(time.Since(now))
 	now = time.Now()
 	fmt.Printf("Running C Compiler: ")
-	cc := "gcc"
+
+	err = cmd.Wait()
+	if err != nil { panic(err) }
+
+	{
+		// cc := "tcc"
+
+		// opt := "-O0"
+		// args := []string{
+		// 	"./out/main.c",
+		// 	"-g",
+		// 	"-std=c11",
+		// 	opt,
+
+		// 	// Flags
+		// 	"-Wall", "-Wextra", "-Werror",
+		// 	"-Wpedantic", "-fsanitize=undefined", "-fsanitize=address", "-fno-omit-frame-pointer",
+		// 	"-Wshadow", "-Wstrict-prototypes", "-Wpointer-arith", "-Wcast-align",
+		// 	"-Wwrite-strings", "-Wswitch-enum", "-Wunreachable-code",
+		// 	"-Wmissing-prototypes", "-Wdouble-promotion", "-Wformat=2",
+
+		// 	// DISABLE UNUSED FUNCTION ERRORS
+		// 	"-Wno-unused-function",
+
+		// 	"-o", "./out/run.bin",
+		// }
+
+		// // Build command
+
+		// err = localCmd("./", cc, args...)
+		// if err != nil { panic(err) }
+	}
+
+	fmt.Println(time.Since(now))
+}
+
+func pipeCompile() *exec.Cmd {
+	cc := "tcc"
+	opt := "-O0"
 	args := []string{
-		"./out/main.c",
 		"-g",
 		"-std=c11",
+		opt,
 
 		// Flags
 		"-Wall", "-Wextra", "-Werror",
@@ -152,13 +201,16 @@ func compile(inputFile string) {
 		// DISABLE UNUSED FUNCTION ERRORS
 		"-Wno-unused-function",
 
+		// "-x", // TCC
+		"-x", "c", // GCC
 		"-o", "./out/run.bin",
+		"-",
 	}
 
 	// Build command
-
-	err = localCmd("./", cc, args...)
-	if err != nil { panic(err) }
-
-	fmt.Println(time.Since(now))
+	cmd := exec.Command(cc, args...)
+	cmd.Dir = "./"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd
 }
