@@ -58,10 +58,12 @@ func (r *Resolver) Scope() *Scope {
 }
 
 func (r *Resolver) AddIdent(name string, n Node) {
+	fmt.Println("AddIdent", name)
+
 	// Check Shadowing
 	_, exists := r.CheckScope(name)
 	if exists {
-		nodeError(n, "declartion shadows a previous variable")
+		nodeError(n, fmt.Sprintf("declartion shadows a previous variable: %s", name))
 		panic("AA")
 	}
 
@@ -184,21 +186,28 @@ func (r *Resolver) GetFuncScope() (*FuncNode, bool) {
 }
 
 func (r *Resolver) PushScope() *Scope {
+	Println("--->", r.scopes.Len())
 	r.scopes.Add(NewScope())
 	return r.Scope()
 }
 
 func (r *Resolver) PopScope() {
+	Println("<---", r.scopes.Len())
 	r.scopes.Remove()
 }
 
 func NewResolver() *Resolver {
 	builtin := NewScope()
-	// TODO: FuncTypes
-	builtin.AddIdent("printf", &BuiltinNode{getType(&BasicType{"void", false})})
-	builtin.AddIdent("Assert", &BuiltinNode{getType(&BasicType{"void", false})})
-	builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
-	builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
+	builtin.AddIdent("printf", &BuiltinNode{getType(&FuncType{returns: VoidType})}) // TODO: ARGS
+	builtin.AddIdent("Assert", &BuiltinNode{getType(&FuncType{returns: VoidType})}) // TODO: macro?
+	// builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
+	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
+
+	// builtin.AddIdent("printf", &BuiltinNode{getType(&BasicType{"void", false})})
+	// builtin.AddIdent("Assert", &BuiltinNode{getType(&BasicType{"void", false})})
+	// builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
+	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
+
 
 	// Add builtin types
 	builtin.AddIdent("u8", &BuiltinNode{getType(&BasicType{"u8", true})})
@@ -268,19 +277,48 @@ func (r *Resolver) RegisterGlobal(result ParseResult) {
 
 func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 	// TODO: Build a Func type that has all the filds and returns
-	if t.returns == nil || len(t.returns.args) == 0 {
-		t.ty = VoidType
-	} else {
-		t.ty = r.resolveLocal(t.returns.args[0])
+	funcType := &FuncType{
+		name: t.name,
+	}
 
-		// r.resolveLocal(t.returns.args[0])
-		// retName := t.returns.args[0].typeNode.Name()
-		// retNode, ok := r.CheckScope(retName)
-		// if !ok {
-		// 	errUndefinedType(t, retName)
-		// }
-		// t.ty = r.resolveLocal(retNode)
-		// Println("ResolveGlobal:", t, t.ty)
+	r.PushScope()
+	defer r.PopScope()
+
+	r.tryPushGenericArgs(t)
+
+	// Generics
+	genTy := make([]Type, 0)
+	if t.generic != nil {
+		for i := range t.generic.Args {
+			genTy = append(genTy, r.resolveLocal(t.generic.Args[i]))
+		}
+	}
+	funcType.generics = genTy
+
+	// Args
+	argTy := make([]Type, 0)
+	for i := range t.arguments.args {
+		argTy = append(argTy, r.resolveLocal(t.arguments.args[i]))
+	}
+	funcType.args = argTy
+
+	// Returns
+	if t.returns == nil || len(t.returns.args) == 0 {
+		funcType.returns = VoidType
+	} else {
+		funcType.returns = r.resolveLocal(t.returns.args[0])
+	}
+
+	t.ty = funcType
+}
+
+func (r *Resolver) tryPushGenericArgs(t *FuncNode) {
+	if t.generic == nil { return }
+
+	for _, genArg := range t.generic.Args {
+		genArg.ty = r.ResolveTypeNodeExpr(genArg)
+		r.AddIdent(genArg.name.str, genArg)
+		// r.Scope().AddIdent(genArg.name.str, genArg)
 	}
 }
 
@@ -381,9 +419,11 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		m := r.PushScope()
 		m.funcNode = t
 
+		r.tryPushGenericArgs(t)
+
 		if t.arguments != nil {
 			for _, arg := range t.arguments.args {
-				Println("t.arguments.args")
+				Println("t.arguments.args", arg)
 				r.resolveLocal(arg)
 				r.AddIdent(arg.name.str, arg)
 			}
@@ -441,7 +481,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		Println("ScopeNode")
 		r.PushScope()
 		ty := r.resolveLocal(t.Scope)
-		r.PushScope()
+		r.PopScope()
 
 		return ty
 
@@ -468,14 +508,6 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 	case *Arg:
 		Println("Resolve Arg:", t)
-		// r.resolveLocal(t.typeNode)
-		// def, ok := r.CheckScope(t.typeNode.Name())
-		// if !ok {
-		// 	errUndefinedType(t, t.typeNode.Name())
-		// }
-		// Println("Resolve Arg... Def:", def)
-		// t.ty = def.Type()
-
 		t.ty = r.resolveLocal(t.typeNode)
 		Println("Resolve Arg... type:", t.ty)
 
@@ -516,19 +548,21 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 	case *CallExpr:
 		Println("CallExpr:", t)
-		callTy := r.resolveLocal(t.callee) // TODO: How does this work if it returns a call target?
+		callTy := r.resolveLocal(t.callee)
 
+		funcType, ok := callTy.(*FuncType)
+		if !ok {
+			nodeError(t, "call expressions must be function types")
+		}
+
+		// TODO: infer generic types
+
+		// TODO: validate argument types match
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		t.ty = callTy
+		t.ty = funcType.returns
 		return t.ty
-
-		// Println("CallExpr:", callTy)
-		// // n, ok := r.CheckScope(t.callee)
-		// // Println("n, ok", n, ok)
-		// // TODO: This is the callee type, but then need to look it up and find what type it returns
-		// return "TODO"
 
 	case *GetExpr:
 		Println("GetExpr:", t)
@@ -678,7 +712,11 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// return t.ty
 	case *BuiltinNode:
 		return t.ty
+	case *GenArg:
+		t.ty = r.ResolveTypeNodeExpr(t)
+		return t.ty
 	case *TypeNode:
+		Println("TypeNode:", t)
 		t.ty = r.ResolveTypeNodeExpr(t.node)
 		if t.ty == nil {
 			panic("FAILED TO RESOLVE")
@@ -858,6 +896,9 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 			t.ty = getType(&ArrayType{lenVal, elemType})
 		}
 		return t.ty
+	case *GenArg:
+		t.ty = getType(&GenericType{t.name.str})
+		return t.ty
 	default:
 		panic(fmt.Sprintf("ResolveTypeNodeExpr: Unknown NodeType: %T", t))
 	}
@@ -868,6 +909,8 @@ func (r *Resolver) isTypedef(n Node) bool {
 	// TODO: Add others if needed
 	switch  n.(type) {
 	case *StructNode:
+		return true
+	case *GenArg:
 		return true
 	case *BuiltinNode:
 		// TODO: This isn't right, we technically need to see if the builtin type returned is a builtin type like an int or a u64

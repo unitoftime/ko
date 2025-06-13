@@ -54,6 +54,7 @@ func (n *FileNode) Type() Type {
 type FuncNode struct {
 	pos Position
 	name string
+	generic *GenericNode
 	arguments *ArgNode
 	returns *ArgNode
 	body *CurlyScope
@@ -65,6 +66,11 @@ func (n *FuncNode) Pos() Position {
 func (n *FuncNode) Type() Type {
 	return n.ty
 }
+
+func (n *FuncNode) Generic() bool {
+	return (n.generic != nil) && (len(n.generic.Args) > 0)
+}
+
 
 type StructNode struct {
 	global bool
@@ -142,6 +148,28 @@ func (n *ReturnNode) Pos() Position {
 	return n.pos
 }
 func (n *ReturnNode) Type() Type {
+	return n.ty
+}
+
+type GenericNode struct {
+	tok Token
+	Args []*GenArg
+}
+func (n *GenericNode) Pos() Position {
+	return n.tok.pos
+}
+func (n *GenericNode) Type() Type {
+	return UnknownType
+}
+
+type GenArg struct {
+	name Token
+	ty Type
+}
+func (n *GenArg) Pos() Position {
+	return n.name.pos
+}
+func (n *GenArg) Type() Type {
 	return n.ty
 }
 
@@ -697,6 +725,11 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 		panic("MUST BE IDENTIFIER")
 	}
 
+	var genericNode *GenericNode
+	if tokens.Peek().token == LBRACK {
+		genericNode = p.ParseGenericArgs()
+	}
+
 	args := p.ParseArgNode()
 
 	// Try to parse return types
@@ -733,6 +766,7 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 	f := FuncNode{
 		pos: funcToken.pos,
 		name: next.str,
+		generic: genericNode,
 		arguments: args,
 		returns: returns,
 		body: body,
@@ -775,6 +809,34 @@ func (p *Parser) ParseReturnNode(tokens *Tokens) Node {
 		expr: p.ParseExpression(),
 	}
 	return r
+}
+
+func (p *Parser) ParseGenericArgs() *GenericNode {
+	tokens := p.tokens
+	next := tokens.Next()
+	if next.token != LBRACK {
+		printErr(next, "expected left bracket")
+		panic(parseError(LPAREN, next))
+	}
+
+	args := make([]*GenArg, 0)
+	for {
+		if tokens.Peek().token == RBRACK { break }
+
+		name := tokens.Next()
+		if name.token != IDENT {
+			panic(fmt.Sprintf("MUST BE IDENT: %s", name.str))
+		}
+		args = append(args, &GenArg{name, nil})
+
+		if tokens.Peek().token == COMMA {
+			tokens.Next()
+		}
+	}
+
+	tokens.Next() // Drop the RPAREN
+
+	return &GenericNode{next, args}
 }
 
 func (p *Parser) ParseArgNode() *ArgNode {

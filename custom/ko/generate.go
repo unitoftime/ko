@@ -216,6 +216,7 @@ func (buf *genBuf) PrintForwardDecl(n Node) bool {
 		buf.Print(t.initExpr)
 	case *FuncNode:
 		if t.body == nil { return false }
+		if t.Generic() { return false } // TODO: Eventually handle these
 
 		buf.LineDirective(t.pos)
 		buf.PrintFuncDef(t)
@@ -439,6 +440,8 @@ func (buf *genBuf) Print(n Node) {
 			buf.Add(";").Line()
 		}
 	case *FuncNode:
+		if t.Generic() { return } // TODO: Eventually handle these
+
 		buf.LineDirective(t.pos)
 		buf.PrintFuncDef(t)
 		buf.Add(" {").Line()

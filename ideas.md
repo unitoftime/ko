@@ -5,7 +5,7 @@
 - [x] Structs
 - [x] Pointers
 - [x] Arrays
-- [ ] Foreign functions <- So I can typewrap stdlib things like malloc,free, etc
+- [x] Foreign functions <- So I can typewrap stdlib things like malloc,free, etc
 - [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
   - [ ] Comptime templating instead?
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)

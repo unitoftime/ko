@@ -30,6 +30,7 @@ func main() {
 	TestPointers()
 	TestMalloc()
 	TestArrays()
+	TestGeneric()
 	// TestSlice()
 	// runBenchmark()
 
@@ -264,6 +265,18 @@ func TestMalloc() {
 
 	// var x = ko_byte_malloc(8)
 	// var y = ko_byte_malloc(8 * sizeof(Point))
+}
+
+func genericAdd[T](a T, b T) T {
+	return a + b
+}
+
+func TestGeneric() {
+	// x := genericAdd(1, 2)
+	// y := genericAdd(x, 4)
+	// z := genericAdd(x, y)
+
+	// genericAdd(5.5, 6.6)
 }
 
 // func backtraceTest(n int) int {

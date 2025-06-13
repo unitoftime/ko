@@ -34,6 +34,29 @@ func (t *StructType) Name() string {
 	return t.name
 }
 
+type FuncType struct {
+	name string
+	generics []Type
+	args []Type
+	returns Type // TODO: only supports one return
+}
+
+func (t *FuncType) Underlying() Type {
+	return t
+}
+func (t *FuncType) Name() string {
+	gen := ""
+	for _, o := range t.generics {
+		gen = gen + "_" + o.Name()
+	}
+	args := ""
+	for _, o := range t.args {
+		args = args + "_" + o.Name()
+	}
+	ret := t.returns.Name()
+	return fmt.Sprintf("func_%s_%s_%s_%s", t.name, gen, args, ret)
+}
+
 type PointerType struct {
 	base Type
 }
@@ -83,6 +106,19 @@ func (t *BasicType) Name() string {
 
 func (t *BasicType) Default() string {
 	return "0" // TODO: need to determine this based on name
+}
+
+type GenericType struct {
+	name string
+	// base Type // This is the type that the generic type is resolving to ????
+}
+
+func (t *GenericType) Underlying() Type {
+	return t
+}
+
+func (t *GenericType) Name() string {
+	return t.name
 }
 
 // type Type interface {
@@ -219,7 +255,6 @@ var (
 	IntLitType = &BasicType{IntLitName, true}
 	FloatLitType = &BasicType{FloatLitName, true}
 	StringLitType = &BasicType{StringLitName, true}
-
 
 	BoolType = &BasicType{"bool", true}
 	IntType = &BasicType{"int", true}

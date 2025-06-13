@@ -114,6 +114,8 @@ void TestArrays (void);
 void TestPointers (void);
 
 void TestMalloc (void);
+
+void TestGeneric (void);
 struct Point {
 	int X;
 	int Y;
@@ -152,6 +154,7 @@ int main (void) {
 	TestPointers();
 	TestMalloc();
 	TestArrays();
+	TestGeneric();
 	;
 	;
 	;
@@ -355,6 +358,13 @@ void TestMalloc (void) {
 	uint8_t* x = malloc(1);
 	(*x) = 5;
 	free(x);
+	;
+	;
+	;
+}
+
+void TestGeneric (void) {
+	;
 	;
 	;
 	;
