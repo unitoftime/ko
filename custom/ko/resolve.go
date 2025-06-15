@@ -41,6 +41,9 @@ type Resolver struct {
 	builtin *Scope
 	global *Scope // TODO: This could just be 0 in the scope stack?
 	scopes *ds.Stack[*Scope]
+
+	// Output data
+	genericInstantiations []GenericInstance
 }
 
 func (r *Resolver) GlobalScope() bool {
@@ -600,6 +603,8 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			t.ty = ot.base
 		case *SliceType:
 			t.ty = ot.base
+		case *FuncType:
+			t.ty = r.InstantiateGenericFunc(ot, t)
 		default:
 			nodeError(t, fmt.Sprintf("type: %s doesn't support indexing", objType.Name()))
 		}
@@ -929,4 +934,82 @@ func isComparable(ty Type) bool {
 		return true
 	}
 	return false
+}
+
+
+type GenericInstance struct {
+	node *IndexExpr
+	funcNode *FuncNode
+	ty Type
+}
+
+func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
+	funcNodeNode, ok := r.CheckScope(t.name)
+	if !ok {
+		panic("Could not find identifier")
+	}
+	funcNode, ok := funcNodeNode.(*FuncNode)
+	if !ok {
+		panic("Only support funcNode generics")
+	}
+
+	genericMap := make(map[string]Type)
+
+	// TODO: Check length of each, make sure they match
+	for _, g := range t.generics {
+		indexVal := r.resolveLocal(index.index) // TODO: index by i (the order params are passed to the index matches the order they are defined in the generics list)
+		genericMap[g.Name()] = indexVal
+	}
+
+	// This is the concrete function
+	finalFunc := &FuncType{
+		name: t.name,
+		args: make([]Type, 0),
+	}
+
+	for _, a := range t.args {
+		genArg, isGenType := a.(*GenericType)
+		if isGenType {
+			// Convert to a concrete type
+			concreteArg, ok := genericMap[genArg.Name()]
+			if !ok {
+				nodeError(index, "undefined generic type")
+				panic("AAA")
+			}
+
+			finalFunc.args = append(finalFunc.args, concreteArg)
+		} else {
+			finalFunc.args = append(finalFunc.args, a)
+		}
+	}
+
+	{
+		genArg, isGenType := t.returns.(*GenericType)
+		if isGenType {
+			// Convert to a concrete type
+			concreteArg, ok := genericMap[genArg.Name()]
+			if !ok {
+				nodeError(index, "undefined generic type")
+				panic("AAA")
+			}
+
+			finalFunc.returns = concreteArg
+		} else {
+			finalFunc.returns = t.returns
+		}
+	}
+
+	ty, ok := checkType(finalFunc)
+	if ok {
+		return ty
+	}
+
+	// TODO: Typecheck the function with the provided values
+	r.genericInstantiations = append(r.genericInstantiations, GenericInstance{
+		node: index,
+		funcNode: funcNode,
+		ty: ty,
+	})
+
+	return getType(finalFunc)
 }

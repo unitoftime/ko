@@ -3,10 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"time"
 )
+
+// TODO: Flags
+var Debug = true // Toggle this to enable/disable debug output
+var GenerateFile = true
 
 const BuildDirectory = "./out/"
 
@@ -47,7 +52,6 @@ func main() {
 		compile(getArg(2))
 		localCmd(BuildDirectory, "./run.bin")
 	}
-
 }
 
 func localCmd(dir, name string, args ...string) error {
@@ -95,6 +99,9 @@ func compile(inputFile string) {
 	resolver := NewResolver()
 	resolver.Resolve(result)
 
+	result.genericInstantiations = resolver.genericInstantiations
+
+	// ---
 
 	fmt.Println(time.Since(now))
 	now = time.Now()
@@ -102,34 +109,44 @@ func compile(inputFile string) {
 	err = os.MkdirAll(BuildDirectory, 0700)
 	if err != nil { panic(err) }
 
-	// TODO: If: Output file
-	// outFile, err := os.Create(BuildDirectory + "main.c")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer file.Close()
-	// writer := bufio.NewWriter(outFile)
-
 	cmd := pipeCompile()
-	outFile, err := cmd.StdinPipe()
+	pipeFile, err := cmd.StdinPipe()
 	if err != nil { panic(err) }
-	writer := bufio.NewWriter(outFile)
+	pipeWriter := bufio.NewWriter(pipeFile)
+
+	var fileWriter *bufio.Writer
+	var finalWriter io.Writer
+	// Debug mode: Also write to main.c
+	if GenerateFile {
+		debugFile, err := os.Create(BuildDirectory + "main.c")
+		if err != nil {
+			panic(err)
+		}
+		defer debugFile.Close()
+		fileWriter = bufio.NewWriter(debugFile)
+
+
+    finalWriter = io.MultiWriter(pipeWriter, fileWriter)
+	} else {
+    finalWriter = io.MultiWriter(pipeWriter)
+	}
+
 
 	err = cmd.Start()
 	if err != nil { panic(err) }
 
 	buf := &genBuf{
 		// buf: new(bytes.Buffer),
-		buf: writer,
+		buf: finalWriter,
 	}
 	buf.Generate(result)
 
-	err = writer.Flush()
-	if err != nil {
-		panic(err)
-	}
+	err = pipeWriter.Flush()
+	if err != nil { panic(err) }
+	err = fileWriter.Flush() // TODO: Error check?
+	if err != nil { panic(err) }
 
-	err = outFile.Close()
+	err = pipeFile.Close()
 	if err != nil { panic(err) }
 
 	// // fmt.Println(buf.String())
@@ -190,6 +207,8 @@ func pipeCompile() *exec.Cmd {
 		"-g",
 		"-std=c11",
 		opt,
+
+		// -ftime-report <- timing information in gcc and clang
 
 		// Flags
 		"-Wall", "-Wextra", "-Werror",

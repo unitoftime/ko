@@ -1,16 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"html/template"
+	"io"
 
 	_ "embed"
 )
 
 type genBuf struct {
 	// buf *bytes.Buffer
-	buf *bufio.Writer
+	buf io.Writer
 	indent int
 	newline bool
 }
@@ -18,11 +18,11 @@ func (b *genBuf) Add(str string) *genBuf {
 	if b.newline {
 		b.newline = false
 		for range b.indent {
-			b.buf.WriteString("\t")
+			io.WriteString(b.buf, "\t")
 		}
 	}
 
-	b.buf.WriteString(str)
+	io.WriteString(b.buf, str)
 	return b
 }
 
@@ -33,7 +33,7 @@ func (b *genBuf) Line() *genBuf {
 }
 func (b *genBuf) LineDirective(pos Position) *genBuf {
 	// #line 31 "test.txt"
-	// b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
+	b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
 	b.Line()
 
 	return b
@@ -123,6 +123,11 @@ func (buf *genBuf) Generate(result ParseResult) {
 		add := buf.PrintForwardDecl(result.fnList[i])
 		if add { buf.Add(";").Line() }
 	}
+	for i := range result.genericInstantiations {
+		buf.PrintGenericForwardDecl(result.genericInstantiations[i])
+		buf.Add(";").Line()
+	}
+
 
 	// Complete all types
 	for _, node := range result.typeList {
@@ -134,6 +139,11 @@ func (buf *genBuf) Generate(result ParseResult) {
 			buf.printStructEqualityFunction(structNode)
 		}
 	}
+	for i := range result.genericInstantiations {
+		buf.PrintCompleteGenericType(result.genericInstantiations[i])
+		buf.Add(";").Line()
+	}
+
 
 	// Declare all global variables
 	for i := range result.varList {
@@ -228,6 +238,48 @@ func (buf *genBuf) PrintForwardDecl(n Node) bool {
 	return true
 }
 
+func (buf *genBuf) PrintGenericForwardDecl(g GenericInstance) {
+	ty := g.node.Type()
+	switch t := ty.(type) {
+	case *FuncType:
+		defer clearGenericMap()
+		for i, genArg := range g.funcNode.generic.Args {
+			addGenericMap(genArg.name.str, t.args[i])
+		}
+
+		newFuncNode := *g.funcNode
+		newFuncNode.name = t.Name()
+		newFuncNode.generic = nil
+		newFuncNode.ty = t
+
+		// buf.LineDirective(g.funcNode.pos)
+		buf.PrintForwardDecl(&newFuncNode)
+	default:
+		panic(fmt.Sprintf("PrintGenericForwardDecl: Unknown Type: %T", ty))
+	}
+}
+
+func (buf *genBuf) PrintCompleteGenericType(g GenericInstance) {
+	ty := g.node.Type()
+	switch t := ty.(type) {
+	case *FuncType:
+		defer clearGenericMap()
+		for i, genArg := range g.funcNode.generic.Args {
+			addGenericMap(genArg.name.str, t.args[i])
+		}
+
+		newFuncNode := *g.funcNode
+		newFuncNode.name = t.Name()
+		newFuncNode.generic = nil
+		newFuncNode.ty = t
+
+		buf.Print(&newFuncNode)
+	default:
+		panic(fmt.Sprintf("PrintCompleteGenericType: Unknown Type: %T", ty))
+	}
+}
+
+
 func (buf *genBuf) PrintCompleteType(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
@@ -236,6 +288,8 @@ func (buf *genBuf) PrintCompleteType(n Node) {
 		panic(fmt.Sprintf("PrintForwardDecl: Unknown NodeType: %T", t))
 	}
 }
+
+
 
 func (buf *genBuf) PrintArgList(args []Node) {
 	for i := range args {
@@ -379,23 +433,24 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 }
 
 func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
-	buf.Print(t.callee)
-	buf.Add(".a[")
-	buf.Print(t.index)
-	buf.Add("]")
-
-	// switch t.callee.Type().(type) {
-	// case *ArrayType:
-	// 	buf.Print(t.callee)
-	// 	buf.Add(".a[")
-	// 	buf.Print(t.index)
-	// 	buf.Add("]")
-	// case *SliceType:
-	// 	buf.Print(t.callee)
-	// 	buf.Add(".data[")
-	// 	buf.Print(t.index)
-	// 	buf.Add("]")
-	// }
+	switch t.callee.Type().(type) {
+	case *ArrayType:
+		buf.Print(t.callee)
+		buf.Add(".a[")
+		buf.Print(t.index)
+		buf.Add("]")
+	case *SliceType:
+		buf.Print(t.callee)
+		buf.Add(".a[")
+		buf.Print(t.index)
+		buf.Add("]")
+	case *FuncType:
+		// If we are here it means that we are doing a compile time instantiation of the functype
+		// The name is established and will be generated elsewhere, so we just need to emit that
+		buf.Add(t.Type().Name())
+	default:
+		panic(fmt.Sprintf("Unknown Type: %T", t.callee.Type()))
+	}
 }
 
 func (buf *genBuf) PrintBinaryExpr(t *BinaryExpr) {
@@ -623,20 +678,6 @@ func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
 	buf.Add("}").Line()
 }
 
-func useCustomEqualityFunc(ty Type) bool {
-	switch ty.(type) {
-	case *BasicType:
-		return false
-	case *StructType:
-		return true // Technically you need to ensure all fields are comparable
-	case *ArrayType:
-		return true // Technically you need to ensure all fields are comparable
-	default:
-		panic(fmt.Sprintf("Unknown Type: %T", ty))
-	}
-
-}
-
 // Emits a variable declaration with name type and init expression
 // If init is nil, emits the default value of the type
 func (buf *genBuf) PrintVarDecl(name string, ty Type, init Node) {
@@ -667,6 +708,17 @@ func varDeclLHS(name string, ty Type) string {
 	// }
 }
 
+// TODO: shouldn't be global
+var genericTypeMap = make(map[string]Type)
+func addGenericMap(genericName string, concreteType Type) {
+	// TODO: validate to make sure it hasn't been added before
+	genericTypeMap[genericName] = concreteType
+}
+
+func clearGenericMap() {
+	genericTypeMap = make(map[string]Type)
+}
+
 // Returns the type name in C
 // For arrays we return the type name of the base type
 func typeNameC(ty Type) string {
@@ -682,8 +734,33 @@ func typeNameC(ty Type) string {
 		// return typeNameC(t.base)
 	case *SliceType:
 		return fmt.Sprintf("__ko_%s_slice", typeNameC(t.base))
+	case *GenericType:
+		concreteType, ok := genericTypeMap[t.name]
+		if !ok {
+			panic(fmt.Sprintf("Missing generic mapping for: %s", t.name))
+		}
+		return typeNameC(concreteType)
 	default:
 		panic(fmt.Sprintf("Unknown Type: %T", ty))
 	}
 	return ""
+}
+
+func useCustomEqualityFunc(ty Type) bool {
+	switch t := ty.(type) {
+	case *BasicType:
+		return false
+	case *StructType:
+		return true // Technically you need to ensure all fields are comparable
+	case *ArrayType:
+		return true // Technically you need to ensure all fields are comparable
+	case *GenericType:
+		concreteType, ok := genericTypeMap[t.name]
+		if !ok {
+			panic(fmt.Sprintf("Missing generic mapping for: %s", t.name))
+		}
+		return useCustomEqualityFunc(concreteType)
+	default:
+		panic(fmt.Sprintf("Unknown Type: %T", ty))
+	}
 }

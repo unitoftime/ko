@@ -268,11 +268,26 @@ func TestMalloc() {
 }
 
 func genericAdd[T](a T, b T) T {
+	// var c T
+	// c = 1
+	// return a + b + c
 	return a + b
 }
 
+// type genericStruct[T] struct {
+// 	val T
+// }
+
 func TestGeneric() {
-	// x := genericAdd(1, 2)
+	// TODO: indexexpr should follow almost the same syntax as call expr just with bracket
+	x := genericAdd[int](1, 2)
+
+	// x := genericAdd<int>(1, 2)
+	// x := genericAdd<"hello">(1, 2)
+
+	// x := genericAdd(int)(1, 2)
+	// x := genericStruct(int){5}
+	// TODO: Need to add ability to infer generic types
 	// y := genericAdd(x, 4)
 	// z := genericAdd(x, y)
 

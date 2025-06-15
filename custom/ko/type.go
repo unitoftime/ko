@@ -7,6 +7,11 @@ import (
 
 var regTypeMap = make(map[string]Type)
 
+func checkType(ty Type) (Type, bool) {
+	ret, ok := regTypeMap[ty.Name()]
+	return ret, ok
+}
+
 func getType(ty Type) Type {
 	ret, ok := regTypeMap[ty.Name()]
 	if ok {

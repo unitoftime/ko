@@ -521,6 +521,8 @@ type ParseResult struct {
 	typeList []Node
 	fnList []*FuncNode
 	varList []*VarStmt
+
+	genericInstantiations []GenericInstance
 }
 
 func (p *Parser) Parse(name string) ParseResult {
