@@ -321,7 +321,6 @@ func (r *Resolver) tryPushGenericArgs(t *FuncNode) {
 	for _, genArg := range t.generic.Args {
 		genArg.ty = r.ResolveTypeNodeExpr(genArg)
 		r.AddIdent(genArg.name.str, genArg)
-		// r.Scope().AddIdent(genArg.name.str, genArg)
 	}
 }
 
@@ -442,8 +441,13 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		}
 
 		Println("t.body", t.body)
-		if t.body != nil {
-			r.resolveLocal(t.body)
+
+		if t.Generic() {
+			// If it is generic, we will do the type checking when we detect a new instantiation
+		} else {
+			if t.body != nil {
+				r.resolveLocal(t.body)
+			}
 		}
 
 		r.PopScope()
@@ -1004,7 +1008,12 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 		return ty
 	}
 
-	// TODO: Typecheck the function with the provided values
+	// Because we detected a new instantiation, we need to execute type checking
+	TODO: Need a way to proces the body. may need a generic mapping map like I do for code generation portion so the type checker can validate based on the correct types. You also need to repush all of the identifiers provided by the function declaration (like you do in resolveLocal)
+	if funcNode.body != nil {
+		r.resolveLocal(funcNode.body)
+	}
+
 	r.genericInstantiations = append(r.genericInstantiations, GenericInstance{
 		node: index,
 		funcNode: funcNode,

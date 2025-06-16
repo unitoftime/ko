@@ -247,13 +247,10 @@ func (buf *genBuf) PrintGenericForwardDecl(g GenericInstance) {
 			addGenericMap(genArg.name.str, t.args[i])
 		}
 
-		newFuncNode := *g.funcNode
-		newFuncNode.name = t.Name()
-		newFuncNode.generic = nil
-		newFuncNode.ty = t
+		newFuncNode := g.funcNode.ToConcrete(t)
 
 		// buf.LineDirective(g.funcNode.pos)
-		buf.PrintForwardDecl(&newFuncNode)
+		buf.PrintForwardDecl(newFuncNode)
 	default:
 		panic(fmt.Sprintf("PrintGenericForwardDecl: Unknown Type: %T", ty))
 	}
@@ -268,12 +265,9 @@ func (buf *genBuf) PrintCompleteGenericType(g GenericInstance) {
 			addGenericMap(genArg.name.str, t.args[i])
 		}
 
-		newFuncNode := *g.funcNode
-		newFuncNode.name = t.Name()
-		newFuncNode.generic = nil
-		newFuncNode.ty = t
+		newFuncNode := g.funcNode.ToConcrete(t)
 
-		buf.Print(&newFuncNode)
+		buf.Print(newFuncNode)
 	default:
 		panic(fmt.Sprintf("PrintCompleteGenericType: Unknown Type: %T", ty))
 	}

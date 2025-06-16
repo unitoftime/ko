@@ -70,6 +70,13 @@ func (n *FuncNode) Type() Type {
 func (n *FuncNode) Generic() bool {
 	return (n.generic != nil) && (len(n.generic.Args) > 0)
 }
+func (n *FuncNode) ToConcrete(t *FuncType) *FuncNode {
+	newFuncNode := *n
+	newFuncNode.name = t.Name()
+	newFuncNode.generic = nil
+	newFuncNode.ty = t
+	return &newFuncNode
+}
 
 
 type StructNode struct {
