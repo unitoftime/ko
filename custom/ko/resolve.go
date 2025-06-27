@@ -627,10 +627,6 @@ func (r *Resolver) resolveLocal(node Node) Type {
 	case *AssignExpr:
 		Println("AssignExpr:", t)
 		valType := r.resolveLocal(t.value)
-		// n, ok := r.CheckScope(t.name.str)
-		// if !ok {
-		// 	errUndefinedVar(t, t.name.str)
-		// }
 		objType := r.resolveLocal(t.name)
 		Println("AssignTypes:", valType, objType)
 
@@ -1009,10 +1005,55 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 	}
 
 	// Because we detected a new instantiation, we need to execute type checking
-	TODO: Need a way to proces the body. may need a generic mapping map like I do for code generation portion so the type checker can validate based on the correct types. You also need to repush all of the identifiers provided by the function declaration (like you do in resolveLocal)
-	if funcNode.body != nil {
-		r.resolveLocal(funcNode.body)
+	// TODO: Need a way to proces the body. may need a generic mapping map like I do for code generation portion so the type checker can validate based on the correct types. You also need to repush all of the identifiers provided by the function declaration (like you do in resolveLocal)
+	// if funcNode.body != nil {
+	// 	r.resolveLocal(funcNode.body)
+	// }
+	{
+		t := funcNode
+		// Note: This only handles function body, the function type gets resolved earlier
+		m := r.PushScope()
+		m.funcNode = t
+
+		r.tryPushGenericArgs(t)
+
+
+		// TODO: This wont work for nested geneics. you need to make the map a nested scope thingy
+		if t.generic != nil {
+			for _, genArg := range t.generic.Args {
+				concreteType, ok := genericMap[genArg.name.str]
+				if !ok { continue }
+				addGenericMap(genArg.name.str, concreteType)
+			}
+		}
+		defer clearGenericMap()
+
+		if t.arguments != nil {
+			for _, arg := range t.arguments.args {
+				Println("t.arguments.args", arg)
+				r.resolveLocal(arg)
+				r.AddIdent(arg.name.str, arg)
+			}
+		}
+		if t.returns != nil {
+			for _, ret := range t.returns.args {
+				Println("t.returns.args", ret.name.str)
+				r.resolveLocal(ret)
+				if ret.name.str != "" {
+					r.AddIdent(ret.name.str, ret)
+				}
+			}
+		}
+
+		Println("t.body", t.body)
+
+		if t.body != nil {
+			r.resolveLocal(t.body)
+		}
+
+		r.PopScope()
 	}
+
 
 	r.genericInstantiations = append(r.genericInstantiations, GenericInstance{
 		node: index,

@@ -134,10 +134,10 @@ bool __ko_Rect_equality(Rect a, Rect b){
 }
 #line 270 "./tests/test.k"
 int func_genericAdd___int_int_int (int a , int b ) {
+	int c = 0;
+	c = 1;
+	return (((a + b) + c));
 	;
-	;
-	;
-	return ((a + b));
 }
 ;
 #line 170 "./tests/test.k"
@@ -376,6 +376,8 @@ void TestMalloc (void) {
 void TestGeneric (void) {
 	;
 	int x = func_genericAdd___int_int_int(1, 2);
+	int y = func_genericAdd___int_int_int(x, 3);
+	printf("GenericAdds: %d", y);
 	;
 	;
 	;

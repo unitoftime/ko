@@ -325,6 +325,10 @@ func (buf *genBuf) PrintDefault(ty Type) {
 	case *BasicType:
 		buf.Add(t.Default())
 		// TODO: Lookup
+	case *GenericType:
+		concType, ok := genericTypeMap[t.name]
+		if !ok { panic("Unknown generic impl") }
+		buf.PrintDefault(concType)
 	default:
 		panic(fmt.Sprintf("Unhandled Type: %T", ty))
 	}
@@ -702,6 +706,7 @@ func varDeclLHS(name string, ty Type) string {
 	// }
 }
 
+// TODO: This is also used by resolver
 // TODO: shouldn't be global
 var genericTypeMap = make(map[string]Type)
 func addGenericMap(genericName string, concreteType Type) {

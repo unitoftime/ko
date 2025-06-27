@@ -268,10 +268,10 @@ func TestMalloc() {
 }
 
 func genericAdd[T](a T, b T) T {
-	// var c T
-	// c = 1
-	// return a + b + c
-	return a + b
+	var c T
+	c = 1
+	return a + b + c
+	// return a + b
 }
 
 // type genericStruct[T] struct {
@@ -281,6 +281,8 @@ func genericAdd[T](a T, b T) T {
 func TestGeneric() {
 	// TODO: indexexpr should follow almost the same syntax as call expr just with bracket
 	x := genericAdd[int](1, 2)
+	y := genericAdd[int](x, 3)
+	printf("GenericAdds: %d", y)
 
 	// x := genericAdd<int>(1, 2)
 	// x := genericAdd<"hello">(1, 2)

@@ -137,6 +137,18 @@ func tryCast(a, b Type) bool {
 		return true // Skip: They are the same type
 	}
 
+	{
+		aa, ok := a.(*GenericType)
+		if ok {
+			a = genericTypeMap[aa.name]
+		}
+
+		bb, ok := b.(*GenericType)
+		if ok {
+			b = genericTypeMap[bb.name]
+		}
+	}
+
 	switch aa := a.(type) {
 	case *PointerType:
 		bb, ok := b.(*PointerType)
