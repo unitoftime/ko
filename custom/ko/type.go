@@ -66,7 +66,7 @@ type PointerType struct {
 	base Type
 }
 func (t *PointerType) Underlying() Type {
-	return t
+	return t.base
 }
 func (t *PointerType) Name() string {
 	return "*"+t.base.Name()
@@ -261,6 +261,7 @@ const IntLitName = "untypedInt"
 const FloatLitName = "untypedFloat"
 const StringLitName = "untypedString"
 const BoolLitName = "untypedBool"
+const UntypedPointerName = "untypedPtr"
 
 var (
 	UnknownType Type = nil
@@ -272,15 +273,35 @@ var (
 	IntLitType = &BasicType{IntLitName, true}
 	FloatLitType = &BasicType{FloatLitName, true}
 	StringLitType = &BasicType{StringLitName, true}
+	PointerLitType = &BasicType{UntypedPointerName, true}
 
 	BoolType = &BasicType{"bool", true}
 	IntType = &BasicType{"int", true}
 )
 
+// TODO: GENERICS
+var AppendBuiltinType = getType(&FuncType{
+	name: "append",
+
+	args: []Type{
+		getType(&SliceType{getType(IntType)}),
+		getType(IntType), // TODO: Variadic
+	},
+	returns: VoidType,
+	// returns: getType(&SliceType{getType(IntType)}),
+
+	// TODO: Generic args
+	// generics: []Type{&},
+	// returns: VoidType,
+	// // TODO: variadic args
+})
+
 // const AutoType = "auto"
 
 // Map from ko types to C equivalent types
 var koToCMap = map[string]string{
+	"nil": "NULL",
+
 	// Default unresolved lits
 	IntLitName: "int",
 	FloatLitName: "float",

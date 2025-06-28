@@ -69,54 +69,128 @@ typedef struct Point Point;
 bool __ko_Point_equality(Point a, Point b);
 typedef struct Rect Rect;
 bool __ko_Rect_equality(Rect a, Rect b);
+typedef struct __ko_int_slice __ko_int_slice;
+
+struct __ko_int_slice {
+    int* a;
+    size_t len;
+    size_t cap;
+};
+
+// Protos
+__ko_int_slice __ko_int_slice_new(size_t capacity);
+__ko_int_slice __ko_int_slice_init(const int* values, size_t count);
+void __ko_int_slice_free(__ko_int_slice* s);
+void __ko_int_slice_append(__ko_int_slice* s, int value);
+int __ko_int_slice_get(__ko_int_slice* s, size_t index);
+void __ko_int_slice_set(__ko_int_slice* s, size_t index, int value);
+
+__ko_int_slice __ko_int_slice_new(size_t capacity) {
+    __ko_int_slice s;
+    s.a = (int*)malloc(capacity * sizeof(int));
+    s.len = 0;
+    s.cap = capacity;
+    return s;
+}
+__ko_int_slice __ko_int_slice_init(const int* values, size_t count) {
+  __ko_int_slice s = __ko_int_slice_new(count);
+  memcpy(s.a, values, sizeof(int) * count);
+  s.len = count;
+  return s;
+}
+
+void __ko_int_slice_free(__ko_int_slice* s) {
+    if (s->a != NULL) {
+        free(s->a);
+        s->a = NULL;
+    }
+    s->len = 0;
+    s->cap = 0;
+}
+
+void __ko_int_slice_append(__ko_int_slice* s, int value) {
+    if (s->len >= s->cap) {
+        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
+        int* new_data = (int*)realloc(s->a, new_cap * sizeof(int));
+        if (!new_data) {
+            fprintf(stderr, "Out of memory in append()\n");
+            exit(1);
+        }
+        s->a = new_data;
+        s->cap = new_cap;
+    }
+
+    printf("append: cap: %d len: %d val: %d\n", s->cap, s->len, value);
+
+    s->a[s->len++] = value;
+}
+
+int __ko_int_slice_get(__ko_int_slice* s, size_t index) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in get()\n");
+        exit(1);
+    }
+    return s->a[index];
+}
+
+void __ko_int_slice_set(__ko_int_slice* s, size_t index, int value) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in set()\n");
+        exit(1);
+    }
+    s->a[index] = value;
+}
+
 typedef struct __ko_8int_arr __ko_8int_arr;
 struct __ko_8int_arr {
 	int a[8];
 };
 
-#line 14 "./tests/test.k"
+#line 16 "./tests/test.k"
 int main (void);
-#line 41 "./tests/test.k"
+#line 43 "./tests/test.k"
 void GenerateCode (void);
-#line 49 "./tests/test.k"
+#line 51 "./tests/test.k"
 void TestHelloWorld (void);
-#line 53 "./tests/test.k"
+#line 55 "./tests/test.k"
 void TestVariablesAndArithmetic (void);
-#line 83 "./tests/test.k"
+#line 85 "./tests/test.k"
 void TestUnaryOperators (void);
-#line 94 "./tests/test.k"
+#line 96 "./tests/test.k"
 uint64_t fib (uint64_t n );
-#line 101 "./tests/test.k"
+#line 103 "./tests/test.k"
 void TestFib (void);
-#line 112 "./tests/test.k"
+#line 114 "./tests/test.k"
 void TestStructs (void);
-#line 124 "./tests/test.k"
+#line 126 "./tests/test.k"
 void TestStructsNested (void);
-#line 141 "./tests/test.k"
+#line 143 "./tests/test.k"
 void TestForLoop (void);
-#line 152 "./tests/test.k"
+#line 154 "./tests/test.k"
 void TestForLoopSimple (void);
-#line 162 "./tests/test.k"
+#line 164 "./tests/test.k"
 void TestIfStatement (void);
-#line 171 "./tests/test.k"
+#line 173 "./tests/test.k"
 void TestGlobalVariable (void);
-#line 177 "./tests/test.k"
+#line 179 "./tests/test.k"
 void TestGlobalVariableStruct (void);
-#line 181 "./tests/test.k"
+#line 183 "./tests/test.k"
 Point reverse (Point val );
-#line 187 "./tests/test.k"
+#line 189 "./tests/test.k"
 void TestCallWithStruct (void);
-#line 198 "./tests/test.k"
+#line 200 "./tests/test.k"
 void TestScopeNesting (void);
-#line 224 "./tests/test.k"
+#line 226 "./tests/test.k"
 void TestArrays (void);
-#line 252 "./tests/test.k"
+#line 246 "./tests/test.k"
+void TestSlice (void);
+#line 258 "./tests/test.k"
 void TestPointers (void);
-#line 260 "./tests/test.k"
+#line 266 "./tests/test.k"
 void TestMalloc (void);
-#line 281 "./tests/test.k"
+#line 287 "./tests/test.k"
 void TestGeneric (void);
-#line 270 "./tests/test.k"
+#line 276 "./tests/test.k"
 int func_genericAdd___int_int_int (int a , int b );
 struct Point {
 	int X;
@@ -132,7 +206,7 @@ struct Rect {
 bool __ko_Rect_equality(Rect a, Rect b){
 	return ((__ko_Point_equality(a.Min, b.Min) == true) && (__ko_Point_equality(a.Max, b.Max) == true));
 }
-#line 270 "./tests/test.k"
+#line 276 "./tests/test.k"
 int func_genericAdd___int_int_int (int a , int b ) {
 	int c = 0;
 	c = 1;
@@ -140,12 +214,12 @@ int func_genericAdd___int_int_int (int a , int b ) {
 	;
 }
 ;
-#line 170 "./tests/test.k"
+#line 172 "./tests/test.k"
 int globA = 5;
-#line 176 "./tests/test.k"
+#line 178 "./tests/test.k"
 Point globPoint = { 2, 3 };
 // package main
-#line 14 "./tests/test.k"
+#line 16 "./tests/test.k"
 int main (void) {
 	;
 	TestHelloWorld();
@@ -165,13 +239,13 @@ int main (void) {
 	TestMalloc();
 	TestArrays();
 	TestGeneric();
-	;
+	TestSlice();
 	;
 	;
 	;
 return __mainRet__;
 }
-#line 41 "./tests/test.k"
+#line 43 "./tests/test.k"
 void GenerateCode (void) {
 	int max = 100000;
 	for (int i = 0; (i < max); (i++)) {
@@ -179,11 +253,11 @@ void GenerateCode (void) {
 		printf("func TestFunc%d(val int) int { return val }\n", i);
 	};
 }
-#line 49 "./tests/test.k"
+#line 51 "./tests/test.k"
 void TestHelloWorld (void) {
 	printf("Hello World\n");
 }
-#line 53 "./tests/test.k"
+#line 55 "./tests/test.k"
 void TestVariablesAndArithmetic (void) {
 	int a = 10;
 	int b = 20;
@@ -209,7 +283,7 @@ void TestVariablesAndArithmetic (void) {
 	d -= 10;
 	Assert((d == 0));
 }
-#line 83 "./tests/test.k"
+#line 85 "./tests/test.k"
 void TestUnaryOperators (void) {
 	int x = 5;
 	Assert((x == 5));
@@ -220,20 +294,20 @@ void TestUnaryOperators (void) {
 	Assert((!((!((!((!true))))))));
 	Assert((!(((-(x)) == (5)))));
 }
-#line 94 "./tests/test.k"
+#line 96 "./tests/test.k"
 uint64_t fib (uint64_t n ) {
 	if ((n <= 1)) {
 		return (n);
 	};
 	return ((fib((n - 2)) + fib((n - 1))));
 }
-#line 101 "./tests/test.k"
+#line 103 "./tests/test.k"
 void TestFib (void) {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
-#line 112 "./tests/test.k"
+#line 114 "./tests/test.k"
 void TestStructs (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
@@ -241,7 +315,7 @@ void TestStructs (void) {
 	Assert((p1.Y == p2.X));
 	Assert((__ko_Point_equality((Point){ 0, 0 }, p2) != true));
 }
-#line 124 "./tests/test.k"
+#line 126 "./tests/test.k"
 void TestStructsNested (void) {
 	Rect r = (Rect){ (Point){ 1, 2 }, (Point){ 3, 4 } };
 	Rect r2 = (Rect){ (Point){ 0, 0 }, (Point){ 0, 0 } };
@@ -258,7 +332,7 @@ void TestStructsNested (void) {
 	Rect2 rr = (Rect2){ (Rect){ (Point){ 0, 0 }, (Point){ 0, 0 } } };
 	Assert((rr.R.Min.X != r.Min.X));
 }
-#line 141 "./tests/test.k"
+#line 143 "./tests/test.k"
 void TestForLoop (void) {
 	int num = 20;
 	int count = 0;
@@ -269,7 +343,7 @@ void TestForLoop (void) {
 	};
 	Assert((count == num));
 }
-#line 152 "./tests/test.k"
+#line 154 "./tests/test.k"
 void TestForLoopSimple (void) {
 	int num = 20;
 	int count = 0;
@@ -279,7 +353,7 @@ void TestForLoopSimple (void) {
 	};
 	Assert((count == num));
 }
-#line 162 "./tests/test.k"
+#line 164 "./tests/test.k"
 void TestIfStatement (void) {
 	if ((5 < 10)) {
 		Assert((1 == 1));
@@ -287,23 +361,23 @@ void TestIfStatement (void) {
 		Assert((1 == 2));
 	};
 }
-#line 171 "./tests/test.k"
+#line 173 "./tests/test.k"
 void TestGlobalVariable (void) {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
-#line 177 "./tests/test.k"
+#line 179 "./tests/test.k"
 void TestGlobalVariableStruct (void) {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }
-#line 181 "./tests/test.k"
+#line 183 "./tests/test.k"
 Point reverse (Point val ) {
 	int tmp = val.X;
 	val.X = val.Y;
 	val.Y = tmp;
 	return (val);
 }
-#line 187 "./tests/test.k"
+#line 189 "./tests/test.k"
 void TestCallWithStruct (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ 2, 1 };
@@ -313,7 +387,7 @@ void TestCallWithStruct (void) {
 	Assert((__ko_Point_equality(p1, p2) != true));
 	Assert((__ko_Point_equality(p1, p4) == true));
 }
-#line 198 "./tests/test.k"
+#line 200 "./tests/test.k"
 void TestScopeNesting (void) {
 	int a = 5;
 	;
@@ -338,7 +412,7 @@ void TestScopeNesting (void) {
 	;
 	Assert((a == 5));
 }
-#line 224 "./tests/test.k"
+#line 226 "./tests/test.k"
 void TestArrays (void) {
 	int len = 8;
 	__ko_8int_arr myArray = {0};
@@ -355,7 +429,18 @@ void TestArrays (void) {
 		Assert((myArray.a[i] == 0));
 	};
 }
-#line 252 "./tests/test.k"
+#line 246 "./tests/test.k"
+void TestSlice (void) {
+	__ko_int_slice mySlice = __ko_int_slice_init((int[]){1, 2, 3}, 3);
+	mySlice.a[2] = 33;
+	Assert((mySlice.a[0] == 1));
+	Assert((mySlice.a[1] == 2));
+	Assert((mySlice.a[2] == 33));
+	__ko_int_slice_append((&mySlice), 44);
+	Assert((mySlice.a[3] == 44));
+	printf("%d %d %d %d %d", mySlice.a[0], mySlice.a[1], mySlice.a[2], mySlice.a[3], mySlice.a[4]);
+}
+#line 258 "./tests/test.k"
 void TestPointers (void) {
 	int y = 5;
 	int* x = NULL;
@@ -363,7 +448,7 @@ void TestPointers (void) {
 	Assert(((*x) == 5));
 	printf("Pointer: %d\n", (*x));
 }
-#line 260 "./tests/test.k"
+#line 266 "./tests/test.k"
 void TestMalloc (void) {
 	uint8_t* x = malloc(1);
 	(*x) = 5;
@@ -372,12 +457,12 @@ void TestMalloc (void) {
 	;
 	;
 }
-#line 281 "./tests/test.k"
+#line 287 "./tests/test.k"
 void TestGeneric (void) {
 	;
 	int x = func_genericAdd___int_int_int(1, 2);
 	int y = func_genericAdd___int_int_int(x, 3);
-	printf("GenericAdds: %d", y);
+	printf("GenericAdds: %d\n", y);
 	;
 	;
 	;

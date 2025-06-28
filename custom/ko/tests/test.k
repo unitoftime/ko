@@ -9,6 +9,8 @@ foreign {
 	func malloc(size usize) *u8
 	func free(ptr *u8)
 	// func sizeof[T](T) usize // TODO: bad return type
+	// func append[T](slice []T, val T) []T
+	// func append(slice []int, val int) []int
 }
 
 func main() {
@@ -31,7 +33,7 @@ func main() {
 	TestMalloc()
 	TestArrays()
 	TestGeneric()
-	// TestSlice()
+	TestSlice()
 	// runBenchmark()
 
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
@@ -241,13 +243,18 @@ func TestArrays() {
 	}
 }
 
-// func TestSlice() {
-// 	var mySlice = []int{1, 2, 3}
-// 	Assert(mySlice[0] == 1)
-// 	Assert(mySlice[1] == 2)
-// 	Assert(mySlice[3] == 3)
-// 	// append(mySlice, 4, 5, 6)
-// }
+func TestSlice() {
+	var mySlice = []int{1, 2, 3}
+	mySlice[2] = 33
+	Assert(mySlice[0] == 1)
+	Assert(mySlice[1] == 2)
+	Assert(mySlice[2] == 33)
+	// TODO: WARNING: APPEND IS HARDCODED FOR INT SLICES!!!!
+	append(&mySlice, 44)
+	Assert(mySlice[3] == 44)
+
+	printf("%d %d %d %d %d", mySlice[0], mySlice[1], mySlice[2], mySlice[3], mySlice[4])
+}
 
 func TestPointers() {
 	y := 5
@@ -282,7 +289,7 @@ func TestGeneric() {
 	// TODO: indexexpr should follow almost the same syntax as call expr just with bracket
 	x := genericAdd[int](1, 2)
 	y := genericAdd[int](x, 3)
-	printf("GenericAdds: %d", y)
+	printf("GenericAdds: %d\n", y)
 
 	// x := genericAdd<int>(1, 2)
 	// x := genericAdd<"hello">(1, 2)

@@ -19,6 +19,9 @@ tcc: build
 # echo 'int main() { return 42; }' | tcc -o myprog -
 # echo 'int main() { return 0; }' | gcc -x c -o myprog -
 
+play: rebuild-ko
+	ko run ./cmd/interp/main.k
+
 run: rebuild-ko
 	ko run ./tests/test.k
 

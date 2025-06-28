@@ -575,18 +575,20 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(")") // buf.Add(");").Line()
 
 	case *CallExpr:
-		buf.Print(t.callee)
+		// TODO: maybe special function for handling codegen for builtin functions
+		if t.callee.Type() == AppendBuiltinType {
+			buf.Add("__ko_int_slice_append")
+		} else {
+			buf.Print(t.callee)
+		}
+
 		buf.Add("(")
 		buf.PrintArgList(t.args)
 		buf.Add(")")
 	case *GetExpr:
-		buf.Print(t.obj)
-		buf.Add(".")
-		buf.Add(t.name.str)
+		buf.selectorExpr(t.obj, t.name.str)
 	case *SetExpr:
-		buf.Print(t.obj)
-		buf.Add(".")
-		buf.Add(t.name.str)
+		buf.selectorExpr(t.obj, t.name.str)
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *BinaryExpr:
@@ -619,10 +621,27 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.Node)
 		buf.Add(")")
 	case *LitExpr:
-		buf.Add(t.tok.str)
+		if t.tok.token == NIL {
+			buf.Add("NULL")
+		} else {
+			buf.Add(t.tok.str)
+		}
 	default:
 		panic(fmt.Sprintf("Print: Unknown NodeType: %T", t))
 	}
+}
+
+func (buf *genBuf) selectorExpr(obj Node, field string) {
+	buf.Print(obj)
+
+	switch obj.Type().(type) {
+	case *PointerType:
+		buf.Add("->")
+	default:
+		buf.Add(".")
+	}
+
+	buf.Add(field)
 }
 
 func equalityFunctionName(ty Type) string {
@@ -753,6 +772,8 @@ func useCustomEqualityFunc(ty Type) bool {
 		return true // Technically you need to ensure all fields are comparable
 	case *ArrayType:
 		return true // Technically you need to ensure all fields are comparable
+	case *PointerType:
+		return false // TODO: Should I find the base type and compare those? or just compare addresses?
 	case *GenericType:
 		concreteType, ok := genericTypeMap[t.name]
 		if !ok {

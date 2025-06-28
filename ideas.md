@@ -18,6 +18,7 @@
 - [ ] other unaries: +x ^x
 - [ ] Switch statements
 - [ ] else if statements
+- [ ] Recursive generic templating - typechecking currntly doesn't work
 - [ ] enums -> I think just generate compile time constants. Maybe iota?
 - [ ] tagged unions -> compile time completion check
 - [ ] alloc/free and general memory safety. References? Ownership? Pointers? Nil Checks?

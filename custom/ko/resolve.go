@@ -103,9 +103,10 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		}
 		strType := n.Type()
 
-		structNode, ok := r.CheckScope(strType.Name())
+		underlyingName := strType.Underlying().Name()
+		structNode, ok := r.CheckScope(underlyingName)
 		if !ok {
-			errUndefinedType(structNode, strType.Name())
+			errUndefinedType(t, underlyingName)
 		}
 
 		Println("StructNode: ", t, field)
@@ -211,8 +212,11 @@ func NewResolver() *Resolver {
 	// builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
 	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
 
+	builtin.AddIdent("append", &BuiltinNode{AppendBuiltinType})
 
 	// Add builtin types
+	builtin.AddIdent("nil", &BuiltinNode{PointerLitType})
+
 	builtin.AddIdent("u8", &BuiltinNode{getType(&BasicType{"u8", true})})
 	builtin.AddIdent("u16", &BuiltinNode{getType(&BasicType{"u16", true})})
 	builtin.AddIdent("u32", &BuiltinNode{getType(&BasicType{"u32", true})})

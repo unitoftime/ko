@@ -21,8 +21,9 @@ void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
     return s;
 }
 {{.Name}} {{.Name}}_init(const {{.Type}}* values, size_t count) {
-  {{.Name}} s = {{.Name}}_new(sizeof({{.Type}}) * count);
+  {{.Name}} s = {{.Name}}_new(count);
   memcpy(s.a, values, sizeof({{.Type}}) * count);
+  s.len = count;
   return s;
 }
 
@@ -46,6 +47,9 @@ void {{.Name}}_append({{.Name}}* s, {{.Type}} value) {
         s->a = new_data;
         s->cap = new_cap;
     }
+
+    printf("append: cap: %d len: %d val: %d\n", s->cap, s->len, value);
+
     s->a[s->len++] = value;
 }
 

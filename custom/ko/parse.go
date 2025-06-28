@@ -1304,8 +1304,10 @@ func (p *Parser) FinishCompLit(callee Node) *CompLitExpr {
 func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	op := tokens.Peek()
 	switch op.token {
-	// TODO: NIL literal?
 
+	case NIL:
+		tok := tokens.Next()
+		return &LitExpr{tok, NIL, PointerLitType}
 	case TRUE:
 		tok := tokens.Next()
 		return &LitExpr{tok, TRUE, BoolLitType}

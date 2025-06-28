@@ -75,6 +75,7 @@ const (
 	TRUE
 	FALSE
 	FOREIGN
+	NIL
   // AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
   // PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
 )
@@ -139,6 +140,7 @@ var tokens = []string{
 	TRUE: "true",
 	FALSE: "false",
 	FOREIGN: "foreign",
+	NIL: "nil",
 }
 var keywordList = map[string]TokenType{
 	tokens[PACKAGE]: PACKAGE,
@@ -153,6 +155,7 @@ var keywordList = map[string]TokenType{
 	tokens[TRUE]: TRUE,
 	tokens[FALSE]: FALSE,
 	tokens[FOREIGN]: FOREIGN,
+	tokens[NIL]: NIL,
 }
 
 
