@@ -488,6 +488,21 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			r.PopScope()
 		}
 
+	case *SwitchStmt:
+		r.resolveLocal(t.cond)
+
+		for i := range t.cases {
+			r.PushScope()
+			r.resolveLocal(t.cases[i])
+			r.PopScope()
+		}
+
+	case *CaseStmt:
+		if t.expr != nil {
+			r.resolveLocal(t.expr)
+		}
+		r.resolveLocal(t.body)
+
 	case *ScopeNode:
 		Println("ScopeNode")
 		r.PushScope()

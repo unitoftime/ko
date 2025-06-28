@@ -25,6 +25,7 @@ func main() {
 	TestForLoop()
 	TestForLoopSimple()
 	TestIfStatement()
+	TestSwitchStatement()
 	TestGlobalVariable()
 	TestGlobalVariableStruct()
 	TestCallWithStruct()
@@ -166,6 +167,20 @@ func TestIfStatement() {
 		Assert(1 == 1)
 	} else {
 		Assert(1 == 2)
+	}
+}
+
+func TestSwitchStatement() {
+	x := 2
+	switch x {
+	case 1:
+		Assert(x == 1)
+	case 2:
+		Assert(x == 2)
+	case 3:
+		Assert(x == 3)
+	default:
+		Assert(x == 555)
 	}
 }
 

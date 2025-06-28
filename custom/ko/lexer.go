@@ -76,8 +76,11 @@ const (
 	FALSE
 	FOREIGN
 	NIL
-  // AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-  // PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
+	SWITCH
+	CASE
+	BREAK
+	DEFAULT
+  // PRINT, THIS, WHILE,
 )
 
 var tokens = []string{
@@ -141,6 +144,10 @@ var tokens = []string{
 	FALSE: "false",
 	FOREIGN: "foreign",
 	NIL: "nil",
+	SWITCH: "switch",
+	CASE: "case",
+	BREAK: "break",
+	DEFAULT: "default",
 }
 var keywordList = map[string]TokenType{
 	tokens[PACKAGE]: PACKAGE,
@@ -156,8 +163,11 @@ var keywordList = map[string]TokenType{
 	tokens[FALSE]: FALSE,
 	tokens[FOREIGN]: FOREIGN,
 	tokens[NIL]: NIL,
+	tokens[SWITCH]: SWITCH,
+	tokens[CASE]: CASE,
+	tokens[BREAK]: BREAK,
+	tokens[DEFAULT]: DEFAULT,
 }
-
 
 func (t TokenType) String() string {
 	return tokens[t]

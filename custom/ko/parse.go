@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 )
 
 // Adapted from: https://github.com/aaronraff/blog-code/blob/master/how-to-write-a-lexer-in-go/lexer.go
@@ -276,6 +277,31 @@ func (n *IfStmt) Type() Type {
 	return UnknownType
 }
 
+type SwitchStmt struct {
+	tok Token
+	cond Node
+	cases []*CaseStmt
+}
+func (n *SwitchStmt) Pos() Position {
+	return Position{}
+}
+func (n *SwitchStmt) Type() Type {
+	return UnknownType
+}
+
+type CaseStmt struct {
+	tok Token
+	expr Node // If expr is nil, then this must be the default case
+	body *CurlyScope
+}
+func (n *CaseStmt) Pos() Position {
+	return Position{}
+}
+func (n *CaseStmt) Type() Type {
+	return UnknownType
+}
+
+
 type ForStmt struct {
 	tok Token
 	init, cond, inc Node
@@ -545,7 +571,7 @@ func (p *Parser) Parse(name string) ParseResult {
 func (p *Parser) ParseFile(name string) *FileNode {
 	return &FileNode{
 		name,
-		p.ParseTil(EOF, true),
+		p.ParseTil(true, EOF),
 	}
 }
 
@@ -585,13 +611,12 @@ func (p *Parser) Consume(tokType TokenType) Token {
 	return p.tokens.Consume(tokType)
 }
 
-func (p *Parser) ParseTil(stopToken TokenType, globalScope bool) []Node {
+func (p *Parser) ParseTil(globalScope bool, stopTokens ...TokenType) []Node {
 	tokens := p.tokens
 	nodes := make([]Node, 0)
 	for tokens.Len() > 0 {
 
-		if tokens.Peek().token == stopToken {
-			tokens.Next()
+		if slices.Contains(stopTokens, tokens.Peek().token) {
 			return nodes
 		}
 
@@ -601,7 +626,7 @@ func (p *Parser) ParseTil(stopToken TokenType, globalScope bool) []Node {
 		} else {
 			next := tokens.Next()
 			if next.token != SEMI {
-				panic(parseError(stopToken, next))
+				panic(parseError(stopTokens[0], next)) // TODO
 			} else {
 				Println("-------------------------semi", p.tokens.Prev())
 			}
@@ -640,6 +665,8 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 	case IF:
 		tokens.Consume(IF)
 		return p.ifStatement(tokens)
+	case SWITCH:
+		return p.switchStatement()
 	case FOR:
 		return p.forStatement()
 	case IDENT:
@@ -805,7 +832,8 @@ func (p *Parser) ParseCurlyScope(globalScope bool) *CurlyScope {
 		panic(parseError(LBRACE, next))
 	}
 
-	body := p.ParseTil(RBRACE, globalScope)
+	body := p.ParseTil(globalScope, RBRACE)
+	p.Consume(RBRACE)
 
 	return &CurlyScope{next.pos, body}
 }
@@ -1013,6 +1041,43 @@ func (p *Parser) ifStatement(tokens *Tokens) Node {
 	}
 
 	return &IfStmt{cond, thenScope, elseScope}
+}
+
+func (p *Parser) switchStatement() Node {
+	p.blockCompLit = true
+	defer func() { p.blockCompLit = false }()
+
+	tok := p.tokens.Consume(SWITCH)
+
+	cond := p.parseStatement()
+
+	p.Consume(LBRACE)
+
+	// parse all cases
+	cases := make([]*CaseStmt, 0)
+	for {
+		if p.Peek().token == RBRACE {
+			break
+		}
+
+		var caseTok Token
+		var expr Node
+		if p.Peek().token == DEFAULT {
+			caseTok = p.Consume(DEFAULT)
+		} else {
+			caseTok = p.Consume(CASE)
+			expr = p.ParseExpression() // TODO: I should disallow assignment, not sure if here or later on tho
+		}
+
+		p.Consume(COLON)
+
+		body := p.ParseTil(false, CASE, RBRACE, DEFAULT)
+		cases = append(cases, &CaseStmt{caseTok, expr, &CurlyScope{caseTok.pos, body}})
+	}
+
+	p.Consume(RBRACE)
+
+	return &SwitchStmt{tok, cond, cases}
 }
 
 func (p *Parser) forStatement() Node {

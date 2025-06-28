@@ -542,6 +542,30 @@ func (buf *genBuf) Print(n Node) {
 			buf.Print(t.elseScope)
 			buf.Add("}")
 		}
+	case *SwitchStmt:
+		buf.Add("switch (")
+		buf.Print(t.cond)
+		buf.Add(") {")
+		buf.Line()
+
+		for i := range t.cases {
+			buf.Print(t.cases[i])
+		}
+
+		buf.Add("}")
+	case *CaseStmt:
+		if t.expr == nil {
+			buf.Add("default:").Line()
+		} else {
+			buf.Add("case ")
+			buf.Print(t.expr)
+			buf.Add(":")
+			buf.Line()
+		}
+
+		buf.Print(t.body)
+		buf.Add("break;")
+		buf.Line()
 
 	case *ArgNode:
 		if len(t.args) <= 0 {

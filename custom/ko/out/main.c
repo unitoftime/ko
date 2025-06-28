@@ -148,49 +148,51 @@ struct __ko_8int_arr {
 
 #line 16 "./tests/test.k"
 int main (void);
-#line 43 "./tests/test.k"
+#line 44 "./tests/test.k"
 void GenerateCode (void);
-#line 51 "./tests/test.k"
+#line 52 "./tests/test.k"
 void TestHelloWorld (void);
-#line 55 "./tests/test.k"
+#line 56 "./tests/test.k"
 void TestVariablesAndArithmetic (void);
-#line 85 "./tests/test.k"
+#line 86 "./tests/test.k"
 void TestUnaryOperators (void);
-#line 96 "./tests/test.k"
+#line 97 "./tests/test.k"
 uint64_t fib (uint64_t n );
-#line 103 "./tests/test.k"
+#line 104 "./tests/test.k"
 void TestFib (void);
-#line 114 "./tests/test.k"
+#line 115 "./tests/test.k"
 void TestStructs (void);
-#line 126 "./tests/test.k"
+#line 127 "./tests/test.k"
 void TestStructsNested (void);
-#line 143 "./tests/test.k"
+#line 144 "./tests/test.k"
 void TestForLoop (void);
-#line 154 "./tests/test.k"
+#line 155 "./tests/test.k"
 void TestForLoopSimple (void);
-#line 164 "./tests/test.k"
+#line 165 "./tests/test.k"
 void TestIfStatement (void);
 #line 173 "./tests/test.k"
+void TestSwitchStatement (void);
+#line 188 "./tests/test.k"
 void TestGlobalVariable (void);
-#line 179 "./tests/test.k"
+#line 194 "./tests/test.k"
 void TestGlobalVariableStruct (void);
-#line 183 "./tests/test.k"
+#line 198 "./tests/test.k"
 Point reverse (Point val );
-#line 189 "./tests/test.k"
+#line 204 "./tests/test.k"
 void TestCallWithStruct (void);
-#line 200 "./tests/test.k"
+#line 215 "./tests/test.k"
 void TestScopeNesting (void);
-#line 226 "./tests/test.k"
+#line 241 "./tests/test.k"
 void TestArrays (void);
-#line 246 "./tests/test.k"
+#line 261 "./tests/test.k"
 void TestSlice (void);
-#line 258 "./tests/test.k"
+#line 274 "./tests/test.k"
 void TestPointers (void);
-#line 266 "./tests/test.k"
+#line 282 "./tests/test.k"
 void TestMalloc (void);
-#line 287 "./tests/test.k"
+#line 303 "./tests/test.k"
 void TestGeneric (void);
-#line 276 "./tests/test.k"
+#line 292 "./tests/test.k"
 int func_genericAdd___int_int_int (int a , int b );
 struct Point {
 	int X;
@@ -206,7 +208,7 @@ struct Rect {
 bool __ko_Rect_equality(Rect a, Rect b){
 	return ((__ko_Point_equality(a.Min, b.Min) == true) && (__ko_Point_equality(a.Max, b.Max) == true));
 }
-#line 276 "./tests/test.k"
+#line 292 "./tests/test.k"
 int func_genericAdd___int_int_int (int a , int b ) {
 	int c = 0;
 	c = 1;
@@ -214,9 +216,9 @@ int func_genericAdd___int_int_int (int a , int b ) {
 	;
 }
 ;
-#line 172 "./tests/test.k"
+#line 187 "./tests/test.k"
 int globA = 5;
-#line 178 "./tests/test.k"
+#line 193 "./tests/test.k"
 Point globPoint = { 2, 3 };
 // package main
 #line 16 "./tests/test.k"
@@ -231,6 +233,7 @@ int main (void) {
 	TestForLoop();
 	TestForLoopSimple();
 	TestIfStatement();
+	TestSwitchStatement();
 	TestGlobalVariable();
 	TestGlobalVariableStruct();
 	TestCallWithStruct();
@@ -245,7 +248,7 @@ int main (void) {
 	;
 return __mainRet__;
 }
-#line 43 "./tests/test.k"
+#line 44 "./tests/test.k"
 void GenerateCode (void) {
 	int max = 100000;
 	for (int i = 0; (i < max); (i++)) {
@@ -253,11 +256,11 @@ void GenerateCode (void) {
 		printf("func TestFunc%d(val int) int { return val }\n", i);
 	};
 }
-#line 51 "./tests/test.k"
+#line 52 "./tests/test.k"
 void TestHelloWorld (void) {
 	printf("Hello World\n");
 }
-#line 55 "./tests/test.k"
+#line 56 "./tests/test.k"
 void TestVariablesAndArithmetic (void) {
 	int a = 10;
 	int b = 20;
@@ -283,7 +286,7 @@ void TestVariablesAndArithmetic (void) {
 	d -= 10;
 	Assert((d == 0));
 }
-#line 85 "./tests/test.k"
+#line 86 "./tests/test.k"
 void TestUnaryOperators (void) {
 	int x = 5;
 	Assert((x == 5));
@@ -294,20 +297,20 @@ void TestUnaryOperators (void) {
 	Assert((!((!((!((!true))))))));
 	Assert((!(((-(x)) == (5)))));
 }
-#line 96 "./tests/test.k"
+#line 97 "./tests/test.k"
 uint64_t fib (uint64_t n ) {
 	if ((n <= 1)) {
 		return (n);
 	};
 	return ((fib((n - 2)) + fib((n - 1))));
 }
-#line 103 "./tests/test.k"
+#line 104 "./tests/test.k"
 void TestFib (void) {
 	Assert((fib(1) == 1));
 	Assert((fib(15) == 610));
 	Assert((fib(20) == 6765));
 }
-#line 114 "./tests/test.k"
+#line 115 "./tests/test.k"
 void TestStructs (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ p1.Y, p1.X };
@@ -315,7 +318,7 @@ void TestStructs (void) {
 	Assert((p1.Y == p2.X));
 	Assert((__ko_Point_equality((Point){ 0, 0 }, p2) != true));
 }
-#line 126 "./tests/test.k"
+#line 127 "./tests/test.k"
 void TestStructsNested (void) {
 	Rect r = (Rect){ (Point){ 1, 2 }, (Point){ 3, 4 } };
 	Rect r2 = (Rect){ (Point){ 0, 0 }, (Point){ 0, 0 } };
@@ -332,7 +335,7 @@ void TestStructsNested (void) {
 	Rect2 rr = (Rect2){ (Rect){ (Point){ 0, 0 }, (Point){ 0, 0 } } };
 	Assert((rr.R.Min.X != r.Min.X));
 }
-#line 143 "./tests/test.k"
+#line 144 "./tests/test.k"
 void TestForLoop (void) {
 	int num = 20;
 	int count = 0;
@@ -343,7 +346,7 @@ void TestForLoop (void) {
 	};
 	Assert((count == num));
 }
-#line 154 "./tests/test.k"
+#line 155 "./tests/test.k"
 void TestForLoopSimple (void) {
 	int num = 20;
 	int count = 0;
@@ -353,7 +356,7 @@ void TestForLoopSimple (void) {
 	};
 	Assert((count == num));
 }
-#line 164 "./tests/test.k"
+#line 165 "./tests/test.k"
 void TestIfStatement (void) {
 	if ((5 < 10)) {
 		Assert((1 == 1));
@@ -362,22 +365,40 @@ void TestIfStatement (void) {
 	};
 }
 #line 173 "./tests/test.k"
+void TestSwitchStatement (void) {
+	int x = 2;
+	switch (x) {
+	case 1:
+		Assert((x == 1));
+	break;
+	case 2:
+		Assert((x == 2));
+	break;
+	case 3:
+		Assert((x == 3));
+	break;
+	default:
+		Assert((x == 555));
+	break;
+	};
+}
+#line 188 "./tests/test.k"
 void TestGlobalVariable (void) {
 	uint64_t ret = fib(globA);
 	Assert((5 == ret));
 }
-#line 179 "./tests/test.k"
+#line 194 "./tests/test.k"
 void TestGlobalVariableStruct (void) {
 	Assert((__ko_Point_equality(globPoint, (Point){ 2, 3 }) == true));
 }
-#line 183 "./tests/test.k"
+#line 198 "./tests/test.k"
 Point reverse (Point val ) {
 	int tmp = val.X;
 	val.X = val.Y;
 	val.Y = tmp;
 	return (val);
 }
-#line 189 "./tests/test.k"
+#line 204 "./tests/test.k"
 void TestCallWithStruct (void) {
 	Point p1 = (Point){ 1, 2 };
 	Point p2 = (Point){ 2, 1 };
@@ -387,7 +408,7 @@ void TestCallWithStruct (void) {
 	Assert((__ko_Point_equality(p1, p2) != true));
 	Assert((__ko_Point_equality(p1, p4) == true));
 }
-#line 200 "./tests/test.k"
+#line 215 "./tests/test.k"
 void TestScopeNesting (void) {
 	int a = 5;
 	;
@@ -412,7 +433,7 @@ void TestScopeNesting (void) {
 	;
 	Assert((a == 5));
 }
-#line 226 "./tests/test.k"
+#line 241 "./tests/test.k"
 void TestArrays (void) {
 	int len = 8;
 	__ko_8int_arr myArray = {0};
@@ -429,18 +450,19 @@ void TestArrays (void) {
 		Assert((myArray.a[i] == 0));
 	};
 }
-#line 246 "./tests/test.k"
+#line 261 "./tests/test.k"
 void TestSlice (void) {
 	__ko_int_slice mySlice = __ko_int_slice_init((int[]){1, 2, 3}, 3);
 	mySlice.a[2] = 33;
 	Assert((mySlice.a[0] == 1));
 	Assert((mySlice.a[1] == 2));
 	Assert((mySlice.a[2] == 33));
+	;
 	__ko_int_slice_append((&mySlice), 44);
 	Assert((mySlice.a[3] == 44));
 	printf("%d %d %d %d %d", mySlice.a[0], mySlice.a[1], mySlice.a[2], mySlice.a[3], mySlice.a[4]);
 }
-#line 258 "./tests/test.k"
+#line 274 "./tests/test.k"
 void TestPointers (void) {
 	int y = 5;
 	int* x = NULL;
@@ -448,7 +470,7 @@ void TestPointers (void) {
 	Assert(((*x) == 5));
 	printf("Pointer: %d\n", (*x));
 }
-#line 266 "./tests/test.k"
+#line 282 "./tests/test.k"
 void TestMalloc (void) {
 	uint8_t* x = malloc(1);
 	(*x) = 5;
@@ -457,7 +479,7 @@ void TestMalloc (void) {
 	;
 	;
 }
-#line 287 "./tests/test.k"
+#line 303 "./tests/test.k"
 void TestGeneric (void) {
 	;
 	int x = func_genericAdd___int_int_int(1, 2);
