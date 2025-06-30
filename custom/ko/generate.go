@@ -102,6 +102,7 @@ func (buf *genBuf) Generate(result ParseResult) {
 	// Forward declare all arrays
 	for _, ty := range regTypeMap {
 		// TODO: You could probably register *special* types you find during typechecking, rather than looping everything
+		Printf("RegTypeMap: %T\n", ty)
 		buf.PrintGeneratedType(ty)
 	}
 	buf.Line()
@@ -443,9 +444,16 @@ func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
 		buf.Print(t.index)
 		buf.Add("]")
 	case *FuncType:
-		// If we are here it means that we are doing a compile time instantiation of the functype
-		// The name is established and will be generated elsewhere, so we just need to emit that
-		buf.Add(t.Type().Name())
+		buf.Print(t.callee)
+		// TODO: I think this is technically wrong, I don't want to decide the callee name based on the type, I want to decide it based on the node
+
+		// // If we are here it means that we are doing a compile time instantiation of the functype
+		// // The name is established and will be generated elsewhere, so we just need to emit that
+		// if t.name == "append" {
+		// 	buf.Add("CUSTOM2")
+		// } else {
+		// 	buf.Add(t.Type().Name())
+		// }
 	default:
 		panic(fmt.Sprintf("Unknown Type: %T", t.callee.Type()))
 	}
@@ -599,12 +607,12 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(")") // buf.Add(");").Line()
 
 	case *CallExpr:
-		// TODO: maybe special function for handling codegen for builtin functions
-		if t.callee.Type() == AppendBuiltinType {
-			buf.Add("__ko_int_slice_append")
-		} else {
-			buf.Print(t.callee)
-		}
+		// if t.callee.Type() == AppendBuiltinType {
+		// 	// __ko_uint8_t_slice_append
+		// 	buf.Add("__ko_int_slice_append")
+		// } else {
+		buf.Print(t.callee)
+		// }
 
 		buf.Add("(")
 		buf.PrintArgList(t.args)
@@ -636,7 +644,17 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *IdentExpr:
-		buf.Add(t.tok.str)
+		// TODO: cleanup how we check for builtin func calls
+		if t.tok.str == "append" {
+			ft, ok := t.ty.(*FuncType)
+			if ok {
+				buf.Add("__ko_").
+					Add(typeNameC(ft.generics[0])). // TODO: a bit hacky
+					Add("_slice_append")
+			}
+		} else {
+			buf.Add(t.tok.str)
+		}
 	case *CompLitExpr:
 		buf.PrintCompLit(t)
 
@@ -657,6 +675,12 @@ func (buf *genBuf) Print(n Node) {
 
 func (buf *genBuf) selectorExpr(obj Node, field string) {
 	buf.Print(obj)
+
+	if obj.Type() == nil {
+		Printf("SelectorType nil: %s: %T (in %T)\n", field, obj.Type(), obj)
+
+		panic("Missing TYPE")
+	}
 
 	switch obj.Type().(type) {
 	case *PointerType:
@@ -798,6 +822,8 @@ func useCustomEqualityFunc(ty Type) bool {
 		return true // Technically you need to ensure all fields are comparable
 	case *PointerType:
 		return false // TODO: Should I find the base type and compare those? or just compare addresses?
+	case *SliceType:
+		return true // TODO: Should I find the base type and compare those? or just compare addresses?
 	case *GenericType:
 		concreteType, ok := genericTypeMap[t.name]
 		if !ok {

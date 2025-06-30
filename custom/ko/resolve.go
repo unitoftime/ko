@@ -305,7 +305,9 @@ func (r *Resolver) resolveFuncNodePrototype(t *FuncNode) {
 	// Args
 	argTy := make([]Type, 0)
 	for i := range t.arguments.args {
-		argTy = append(argTy, r.resolveLocal(t.arguments.args[i]))
+		at := r.resolveLocal(t.arguments.args[i])
+		argTy = append(argTy, at)
+		Printf("FuncArgs %s: %d, %T\n", t.name, i, at)
 	}
 	funcType.args = argTy
 
@@ -419,7 +421,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		}
 		return t.ty
 	case *FuncNode:
-		Println("FuncNode:", t)
+		Println("FuncNode:", t.name)
 
 		// Note: This only handles function body, the function type gets resolved earlier
 		m := r.PushScope()
@@ -429,8 +431,8 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 		if t.arguments != nil {
 			for _, arg := range t.arguments.args {
-				Println("t.arguments.args", arg)
-				r.resolveLocal(arg)
+				at := r.resolveLocal(arg)
+				Printf("t.arguments.args: %T, %v\n", at, arg)
 				r.AddIdent(arg.name.str, arg)
 			}
 		}
@@ -539,7 +541,6 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 		return t.ty
 	case *ArgNode:
-
 		// TODO: Are these just for func args? Maybe add to global scoping check
 		for _, a := range t.args {
 			r.resolveLocal(a)
@@ -592,7 +593,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 	case *GetExpr:
 		Println("GetExpr:", t)
-		// t.ty = r.resolveLocal(t.obj)
+		r.resolveLocal(t.obj)
 
 		// n, ok := r.CheckScopeField(t.obj, t.name.str)
 		// if !ok {
@@ -626,12 +627,27 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			t.ty = ot.base
 		case *SliceType:
 			t.ty = ot.base
+
+			// gt, ok := t.ty.(*GenericType)
+			// if ok {
+			// 	ct, ok := genericTypeMap[gt.name]
+			// 	if !ok { panic("Unknown generic impl") }
+			// 	t.ty = ct
+			// }
 		case *FuncType:
 			t.ty = r.InstantiateGenericFunc(ot, t)
+			it, ok := t.callee.(*IdentExpr)
+			if ok {
+				it.ty = t.ty // resolve the generic for the ident type
+			}
+
+			return t.ty
 		default:
 			nodeError(t, fmt.Sprintf("type: %s doesn't support indexing", objType.Name()))
 		}
 
+
+		// If we are here then it must be either an array or slice, so check casting to an int
 		idxType := r.resolveLocal(t.index)
 		// TODO: Technically only for array/slices: Ensure index type is castable to an int
 		supportedIndexType := IntType
@@ -711,7 +727,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			return UnknownType
 		}
 		t.ty = node.Type()
-		Println("IdentExpr.Type:", t)
+		Printf("IdentExpr.Type: %T %v", t.ty, t)
 		// t.ty = r.resolveLocal(node)
 		return t.ty
 
@@ -881,6 +897,8 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 			t.ty = getType(&PointerType{t.ty})
 		// case AND:
 			// TODO: If you ever do reference types like c++
+		default:
+			panic("ASLFKJSAFL")
 		}
 
 		return t.ty
@@ -967,8 +985,13 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 	if !ok {
 		panic("Could not find identifier")
 	}
-	funcNode, ok := funcNodeNode.(*FuncNode)
-	if !ok {
+
+	var funcNode *FuncNode
+	switch tt := funcNodeNode.(type) {
+	case *BuiltinNode:
+	case *FuncNode:
+		funcNode = tt
+	default:
 		panic("Only support funcNode generics")
 	}
 
@@ -983,7 +1006,18 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 	// This is the concrete function
 	finalFunc := &FuncType{
 		name: t.name,
+		builtin: t.builtin,
+		generics: make([]Type, 0),
 		args: make([]Type, 0),
+	}
+
+	for _, g := range t.generics {
+		concreteArg, ok := genericMap[g.Name()]
+		if !ok {
+			nodeError(index, "undefined generic type")
+			panic("AAA")
+		}
+		finalFunc.generics = append(finalFunc.generics, concreteArg)
 	}
 
 	for _, a := range t.args {
@@ -1018,9 +1052,15 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 		}
 	}
 
+	// Check if we've already instantiated this type/generic
 	ty, ok := checkType(finalFunc)
 	if ok {
 		return ty
+	}
+
+	// if the funcNode is nil, then it is a builtin, so just return the type, no instantiation needed
+	if funcNode == nil {
+		return finalFunc
 	}
 
 	// Because we detected a new instantiation, we need to execute type checking

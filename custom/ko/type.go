@@ -41,6 +41,7 @@ func (t *StructType) Name() string {
 
 type FuncType struct {
 	name string
+	builtin string
 	generics []Type
 	args []Type
 	returns Type // TODO: only supports one return
@@ -54,12 +55,13 @@ func (t *FuncType) Name() string {
 	for _, o := range t.generics {
 		gen = gen + "_" + o.Name()
 	}
-	args := ""
-	for _, o := range t.args {
-		args = args + "_" + o.Name()
-	}
-	ret := t.returns.Name()
-	return fmt.Sprintf("func_%s_%s_%s_%s", t.name, gen, args, ret)
+	return fmt.Sprintf("func_%s%s", t.name, gen)
+	// args := ""
+	// for _, o := range t.args {
+	// 	args = args + "_" + o.Name()
+	// }
+	// ret := t.returns.Name()
+	// return fmt.Sprintf("func_%s_%s_%s_%s", t.name, gen, args, ret)
 }
 
 type PointerType struct {
@@ -279,22 +281,25 @@ var (
 	IntType = &BasicType{"int", true}
 )
 
-// TODO: GENERICS
-var AppendBuiltinType = getType(&FuncType{
+var AppendGenericT = &GenericType{"T"}
+var AppendBuiltinType = &FuncType{
 	name: "append",
+	builtin: "%s_append",
 
+	// args: []Type{
+	// 	getType(&SliceType{getType(IntType)}),
+	// 	getType(IntType), // TODO: Variadic
+	// },
+	// returns: VoidType,
+	// // returns: getType(&SliceType{getType(IntType)}),
+
+	generics: []Type{AppendGenericT},
 	args: []Type{
-		getType(&SliceType{getType(IntType)}),
-		getType(IntType), // TODO: Variadic
+		&SliceType{AppendGenericT},
+		AppendGenericT, // TODO: Variadic
 	},
 	returns: VoidType,
-	// returns: getType(&SliceType{getType(IntType)}),
-
-	// TODO: Generic args
-	// generics: []Type{&},
-	// returns: VoidType,
-	// // TODO: variadic args
-})
+}
 
 // const AutoType = "auto"
 

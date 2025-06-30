@@ -8,17 +8,19 @@ foreign {
 
 func main() {
 	printf("Starting Interpreter")
-	chunk := []u8{}
+	chunk := Chunk{[]u8{}}
 }
 
 // type Opcode enum
 var OpReturn = 0
 
-// type Chunk struct {
-// 	count int
-// 	cap int
-// 	code *u8
-// }
+type Chunk struct {
+	code []u8
+}
+
+func writeChunk(chunk *Chunk, dat u8) {
+	append[u8](&(chunk.code), dat)
+}
 
 // func initChunk(chunk *Chunk) {
 // 	chunk.count = 0

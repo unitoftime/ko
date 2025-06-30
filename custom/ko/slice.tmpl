@@ -9,9 +9,10 @@ struct {{.Name}} {
 {{.Name}} {{.Name}}_new(size_t capacity);
 {{.Name}} {{.Name}}_init(const {{.Type}}* values, size_t count);
 void {{.Name}}_free({{.Name}}* s);
-void {{.Name}}_append({{.Name}}* s, {{.Type}} value);
 {{.Type}} {{.Name}}_get({{.Name}}* s, size_t index);
 void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
+
+void {{.Name}}_append({{.Name}}* s, {{.Type}} value);
 
 {{.Name}} {{.Name}}_new(size_t capacity) {
     {{.Name}} s;
@@ -25,6 +26,10 @@ void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
   memcpy(s.a, values, sizeof({{.Type}}) * count);
   s.len = count;
   return s;
+}
+
+bool __ko_{{.Name}}_equality({{.Name}} a, {{.Name}} b) {
+     return (a.a == b.a) && (a.len == b.len) && (a.cap == b.cap);
 }
 
 void {{.Name}}_free({{.Name}}* s) {
