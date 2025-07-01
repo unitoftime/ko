@@ -213,6 +213,7 @@ func NewResolver() *Resolver {
 	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
 
 	builtin.AddIdent("append", &BuiltinNode{AppendBuiltinType})
+	// builtin.AddIdent("len", &BuiltinNode{LenBuiltinType})
 
 	// Add builtin types
 	builtin.AddIdent("nil", &BuiltinNode{PointerLitType})
@@ -594,13 +595,6 @@ func (r *Resolver) resolveLocal(node Node) Type {
 	case *GetExpr:
 		Println("GetExpr:", t)
 		r.resolveLocal(t.obj)
-
-		// n, ok := r.CheckScopeField(t.obj, t.name.str)
-		// if !ok {
-		// 	errUndefinedVar(t, t.name.str)
-		// }
-		// t.ty = n.Type()
-		// return t.ty
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
@@ -1006,7 +1000,6 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 	// This is the concrete function
 	finalFunc := &FuncType{
 		name: t.name,
-		builtin: t.builtin,
 		generics: make([]Type, 0),
 		args: make([]Type, 0),
 	}

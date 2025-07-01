@@ -215,7 +215,7 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		switch r {
 		case '\n':
 			// Decide if we want to add semicolon
-			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == INT || l.lastToken == FLOAT || l.lastToken == INC || l.lastToken == DEC {
+			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == RBRACK || l.lastToken == INT || l.lastToken == FLOAT || l.lastToken == INC || l.lastToken == DEC {
 				l.lastToken = SEMI
 				l.resetPosition()
 				return l.pos, SEMI, ";"

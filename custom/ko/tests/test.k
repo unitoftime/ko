@@ -239,21 +239,21 @@ func TestScopeNesting() {
 }
 
 func TestArrays() {
-	var len = 8
+	var length = 8
 	var myArray [8]int
 
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		Assert(myArray[i] == 0)
 		myArray[i] = 99
 	}
 
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		Assert(myArray[i] == 99)
 	}
 
 	// Clear and recheck
 	myArray = [8]int{}
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		Assert(myArray[i] == 0)
 	}
 }
@@ -264,9 +264,12 @@ func TestSlice() {
 	Assert(mySlice[0] == 1)
 	Assert(mySlice[1] == 2)
 	Assert(mySlice[2] == 33)
-	// TODO: WARNING: APPEND IS HARDCODED FOR INT SLICES!!!!
+	// Assert(len(mySlice), 3)
+
 	append(&mySlice, 44)
 	Assert(mySlice[3] == 44)
+	// Assert(len(mySlice), 4)
+
 
 	printf("%d %d %d %d %d", mySlice[0], mySlice[1], mySlice[2], mySlice[3], mySlice[4])
 }

@@ -41,7 +41,6 @@ func (t *StructType) Name() string {
 
 type FuncType struct {
 	name string
-	builtin string
 	generics []Type
 	args []Type
 	returns Type // TODO: only supports one return
@@ -284,7 +283,6 @@ var (
 var AppendGenericT = &GenericType{"T"}
 var AppendBuiltinType = &FuncType{
 	name: "append",
-	builtin: "%s_append",
 
 	// args: []Type{
 	// 	getType(&SliceType{getType(IntType)}),
@@ -300,6 +298,15 @@ var AppendBuiltinType = &FuncType{
 	},
 	returns: VoidType,
 }
+var LenBuiltinType = &FuncType{
+	name: "len",
+	generics: []Type{AppendGenericT},
+	args: []Type{
+		AppendGenericT,
+	},
+	returns: getType(IntType),
+}
+
 
 // const AutoType = "auto"
 

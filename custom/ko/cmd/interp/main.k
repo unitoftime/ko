@@ -22,6 +22,25 @@ func writeChunk(chunk *Chunk, dat u8) {
 	append[u8](&(chunk.code), dat)
 }
 
+// name string
+func disassembleChunk(chunk *Chunk) {
+	for offset := 0; offset < len(chunk.code); offset++ {
+		offset = disassembleInstruction(chunk, offset)
+	}
+}
+
+func disassembleInstruction(chunk *Chunk, offset int) int {
+	printf("%04d", offset)
+	inst := chunk.code[offset]
+	switch inst {
+	case OpReturn:
+		return simpleInstruction("OP_RETURN", offset)
+	default:
+		printf("Unknown opCode; %d\n", inst)
+		return offset + 1
+	}
+}
+
 // func initChunk(chunk *Chunk) {
 // 	chunk.count = 0
 // 	chunk.cap = 0
