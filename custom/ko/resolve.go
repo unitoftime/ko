@@ -688,7 +688,7 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		lType := r.resolveLocal(t.target)
 		rType := r.resolveLocal(t.initExpr)
 
-		if lType != rType {
+		if !tryCast(rType, lType) {
 			nodeError(t, fmt.Sprintf("Mismatched types: %s, %s", lType.Name(), rType.Name()))
 		}
 
