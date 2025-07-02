@@ -7,7 +7,7 @@ foreign {
 }
 
 func main() {
-	printf("Starting Interpreter")
+	ko_printf("Starting Interpreter")
 	chunk := Chunk{[]u8{}}
 }
 
@@ -24,24 +24,24 @@ func writeChunk(chunk *Chunk, dat u8) {
 
 // name string
 func disassembleChunk(chunk *Chunk) {
-	for offset := 0; offset < len(chunk.code); offset++ {
+	for offset := 0; offset < len[u8](chunk.code); offset++ {
 		offset = disassembleInstruction(chunk, offset)
 	}
 }
 
 func disassembleInstruction(chunk *Chunk, offset int) int {
-	printf("%04d", offset)
+	ko_printf("%04d", offset)
 	inst := chunk.code[offset]
 	switch inst {
 	case OpReturn:
 		return simpleInstruction("OP_RETURN", offset)
 	default:
-		printf("Unknown opCode; %d\n", inst)
+		ko_printf("Unknown opCode; %d\n", inst)
 		return offset + 1
 	}
 }
 
-// func simpleInstruction(name string, offset int) int {
-// 	printf("%s\n", name)
-// 	return offset + 1
-// }
+func simpleInstruction(name string, offset int) int {
+	ko_printf("%s\n", name)
+	return offset + 1
+}

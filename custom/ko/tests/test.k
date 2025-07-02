@@ -35,6 +35,7 @@ func main() {
 	TestArrays()
 	TestGeneric()
 	TestSlice()
+	TestString()
 	// runBenchmark()
 
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
@@ -44,13 +45,13 @@ func main() {
 func GenerateCode() {
 	max := 100000
 	for i := 0; i < max; i++ {
-		printf("type TestStruct%d struct { a int }\n", i)
-		printf("func TestFunc%d(val int) int { return val }\n", i)
+		ko_printf("type TestStruct%d struct { a int }\n", i)
+		ko_printf("func TestFunc%d(val int) int { return val }\n", i)
 	}
 }
 
 func TestHelloWorld() {
-	printf("Hello World\n")
+	ko_printf("Hello World\n")
 }
 
 func TestVariablesAndArithmetic() {
@@ -145,7 +146,7 @@ func TestForLoop() {
 	var num = 20
 	var count = 0
 	for var i = 0; i < num; i = i + 1 {
-		// printf("Fib %d: %d\n", i, fib(i))
+		// ko_printf("Fib %d: %d\n", i, fib(i))
 		Assert(i == count)
 		count = count + 1
 	}
@@ -271,7 +272,7 @@ func TestSlice() {
 	Assert(len[int](mySlice) == 4)
 
 
-	printf("%d %d %d %d %d", mySlice[0], mySlice[1], mySlice[2], mySlice[3], mySlice[4])
+	ko_printf("%d %d %d %d %d\n", mySlice[0], mySlice[1], mySlice[2], mySlice[3], mySlice[4])
 }
 
 func TestPointers() {
@@ -279,7 +280,7 @@ func TestPointers() {
 	var x *int
 	x = &y
 	Assert(*x == 5)
-	printf("Pointer: %d\n", *x)
+	ko_printf("Pointer: %d\n", *x)
 }
 
 func TestMalloc() {
@@ -307,7 +308,7 @@ func TestGeneric() {
 	// TODO: indexexpr should follow almost the same syntax as call expr just with bracket
 	x := genericAdd[int](1, 2)
 	y := genericAdd[int](x, 3)
-	printf("GenericAdds: %d\n", y)
+	ko_printf("GenericAdds: %d\n", y)
 
 	// x := genericAdd<int>(1, 2)
 	// x := genericAdd<"hello">(1, 2)
@@ -340,6 +341,15 @@ func TestGeneric() {
 // 	count()
 // 	count()
 // 	count()
-// 	printf("Closure Count: %d", i)
+// 	ko_printf("Closure Count: %d", i)
 // }
 
+
+func TestString() {
+	ko_printf("TestString\n")
+	var str = "hello"
+
+	str2 := "world"
+
+	ko_printf("%s %s", str, str2)
+}

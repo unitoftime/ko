@@ -280,6 +280,8 @@ var (
 
 	BoolType = &BasicType{"bool", true}
 	IntType = &BasicType{"int", true}
+	Float64Type = &BasicType{"f64", true}
+	StringType = &BasicType{"string", true}
 )
 
 var AppendGenericT = &GenericType{"T"}
@@ -316,10 +318,12 @@ var LenBuiltinType = &FuncType{
 var koToCMap = map[string]string{
 	"nil": "NULL",
 
+	StringLitName: "__ko_string",
+	"string": "__ko_string",
+
 	// Default unresolved lits
 	IntLitName: "int",
 	FloatLitName: "float",
-	// StringLitName: "string",
 
 	"byte": "uint8_t",
 	"rune": "int32_t",
@@ -384,9 +388,11 @@ func resolveLitType(in Type) Type {
 			return BoolType
 		case IntLitName:
 			return IntType
+		case FloatLitName:
+			return Float64Type
+		case StringLitName:
+			return StringType
 			// TODO: these ones
-		// case FloatLitName:
-		// case StringLitName:
 		// case UntypedPointerName:
 		}
 	}

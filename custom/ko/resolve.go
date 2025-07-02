@@ -203,6 +203,7 @@ func (r *Resolver) PopScope() {
 func NewResolver() *Resolver {
 	builtin := NewScope()
 	builtin.AddIdent("printf", &BuiltinNode{getType(&FuncType{returns: VoidType})}) // TODO: ARGS
+	builtin.AddIdent("ko_printf", &BuiltinNode{getType(&FuncType{returns: VoidType})}) // TODO: ARGS
 	builtin.AddIdent("Assert", &BuiltinNode{getType(&FuncType{returns: VoidType})}) // TODO: macro?
 	// builtin.AddIdent("ko_byte_malloc", &BuiltinNode{getType(&BasicType{"uint8_t*", false})})
 	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
@@ -227,9 +228,13 @@ func NewResolver() *Resolver {
 	builtin.AddIdent("i32", &BuiltinNode{getType(&BasicType{"i32", true})})
 	builtin.AddIdent("i64", &BuiltinNode{getType(&BasicType{"i64", true})})
 
+	builtin.AddIdent("f64", &BuiltinNode{getType(Float64Type)})
+	builtin.AddIdent("string", &BuiltinNode{getType(StringType)})
+
 	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("uintptr", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("usize", &BuiltinNode{getType(IntType)})
+
 
 	return &Resolver{
 		builtin: builtin,

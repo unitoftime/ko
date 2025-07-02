@@ -9,6 +9,7 @@
 - [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
 - [x] Comptime templating instead?
 - [x] Switch statements
+- [ ] https://nickav.co/posts/0003_wasm_from_scratch
 - [ ] variadics
 - [ ] Super heavy runtime hotreloading emphasis
 - [ ] Global variables whose expression is a function call (C doesn't allow this you may need to do an init function or something like that?)

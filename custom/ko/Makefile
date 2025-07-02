@@ -10,7 +10,7 @@ FLAG_STRICT=-Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-align \
 FLAGS=-g ${FLAG_BASIC} ${FLAG_UB} ${FLAG_STRICT}
 
 
-gcc: build
+gcc:
 	cd ./out && gcc ${FLAGS} ./main.c -o run.bin && ./run.bin
 
 tcc:

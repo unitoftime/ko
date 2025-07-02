@@ -11,6 +11,7 @@ struct {{.Name}} {
 void {{.Name}}_free({{.Name}}* s);
 {{.Type}} {{.Name}}_get({{.Name}}* s, size_t index);
 void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
+bool __ko_{{.Name}}_equality({{.Name}} a, {{.Name}} b);
 
 void {{.Name}}_append({{.Name}}* s, {{.Type}} value);
 size_t {{.Name}}_len({{.Name}} s);
@@ -54,7 +55,7 @@ void {{.Name}}_append({{.Name}}* s, {{.Type}} value) {
         s->cap = new_cap;
     }
 
-    printf("append: cap: %d len: %d val: %d\n", s->cap, s->len, value);
+    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
 
     s->a[s->len++] = value;
 }

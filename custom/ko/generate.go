@@ -671,6 +671,10 @@ func (buf *genBuf) Print(n Node) {
 	case *LitExpr:
 		if t.tok.token == NIL {
 			buf.Add("NULL")
+		} else if t.tok.token == STRING {
+			buf.Add("__ko_string_make(").
+				Add(t.tok.str).
+				Add(")")
 		} else {
 			buf.Add(t.tok.str)
 		}
