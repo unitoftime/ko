@@ -526,7 +526,9 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		if t.typeSpec != nil {
 			t.ty = r.resolveLocal(t.typeSpec)
 		} else if t.initExpr != nil {
-			t.ty = r.resolveLocal(t.initExpr)
+			initTy := r.resolveLocal(t.initExpr)
+
+			t.ty = resolveLitType(initTy)
 		}
 
 		if r.LocalScope() {

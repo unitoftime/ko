@@ -41,34 +41,7 @@ func disassembleInstruction(chunk *Chunk, offset int) int {
 	}
 }
 
-// func initChunk(chunk *Chunk) {
-// 	chunk.count = 0
-// 	chunk.cap = 0
-// 	chunk.code = nil
-// }
-
-// func writeChunk(chunk *Chunk, dat u8) {
-// 	if chunk.cap < chunk.count + 1 {
-// 		oldCap := chunk.cap
-// 		chunk.cap = growCap(oldCap)
-// 		chunk.code = growArray[u8](chunk.code, oldCap, chunk.cap)
-// 	}
-
-// 	chunk.code[chunk.count] = dat
-// 	chunk.count++
-// }
-
-// func growCap(cap int) int {
-// 	if cap < 8 {
-// 		return 8
-// 	}
-// 	return cap * 2
-// }
-
-// func growArray[T](pointer *T, oldCount int, newCount int) *T {
-// 	return reallocate(pointer, sizeof(T) * oldCount, sizeof(T) * newCount)
-// }
-
-// func reallocate[T](ptr *T, old usize, new usize) *T {
-// 	return ptr
+// func simpleInstruction(name string, offset int) int {
+// 	printf("%s\n", name)
+// 	return offset + 1
 // }

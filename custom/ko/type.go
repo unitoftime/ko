@@ -375,6 +375,24 @@ func typeStr(in Type) string {
 	return ret
 }
 
+// Resolve literal types into their final type, if they dont resolve manually by a typespec
+func resolveLitType(in Type) Type {
+	switch t := in.(type) {
+	case *BasicType:
+		switch t.name {
+		case BoolLitName:
+			return BoolType
+		case IntLitName:
+			return IntType
+			// TODO: these ones
+		// case FloatLitName:
+		// case StringLitName:
+		// case UntypedPointerName:
+		}
+	}
+	return in
+}
+
 // func typeOf(node Node) *Type {
 // 	if node == nil {
 // 		return UnknownType
