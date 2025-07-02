@@ -2,6 +2,32 @@ package main
 
 import "fmt"
 
+// func DebugTree(node Node, indent int) {
+// 	switch t := node.(type) {
+// 	case *PackageNode:
+// 		fmt.Println("package:", t.name)
+// 	case *FileNode:
+// 		fmt.Println("file:", t.filename)
+// 		indent++
+// 		for _, n := range t.nodes {
+// 			DebugTree(n, indent)
+// 		}
+// 		indent--
+// 	case *CommentNode:
+// 		// Nothing
+// 	case *ForeignScope:
+// 		fmt.Println("foreign")
+// 		indent++
+// 		DebugTree(t.body, indent)
+// 		indent--
+// 	case *CurlyScope:
+// 		fmt.Println(
+// 	default:
+// 		fmt.Sprintf("Unknown NodeType: %T", t)
+// 		panic(fmt.Sprintf("Unknown NodeType: %T", t))
+// 	}
+// }
+
 func WalkNode(n Node) {
 	switch t := n.(type) {
 	case *PackageNode:

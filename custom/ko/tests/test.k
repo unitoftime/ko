@@ -264,11 +264,11 @@ func TestSlice() {
 	Assert(mySlice[0] == 1)
 	Assert(mySlice[1] == 2)
 	Assert(mySlice[2] == 33)
-	// Assert(len(mySlice), 3)
+	Assert(len[int](mySlice) == 3)
 
-	append(&mySlice, 44)
+	append[int](&mySlice, 44)
 	Assert(mySlice[3] == 44)
-	// Assert(len(mySlice), 4)
+	Assert(len[int](mySlice) == 4)
 
 
 	printf("%d %d %d %d %d", mySlice[0], mySlice[1], mySlice[2], mySlice[3], mySlice[4])

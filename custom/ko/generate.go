@@ -432,7 +432,7 @@ func (buf *genBuf) PrintStructNode(t *StructNode) {
 }
 
 func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
-	switch t.callee.Type().(type) {
+	switch tt := t.callee.Type().(type) {
 	case *ArrayType:
 		buf.Print(t.callee)
 		buf.Add(".a[")
@@ -444,16 +444,22 @@ func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
 		buf.Print(t.index)
 		buf.Add("]")
 	case *FuncType:
-		buf.Print(t.callee)
+		// buf.Print(t.callee)
 		// TODO: I think this is technically wrong, I don't want to decide the callee name based on the type, I want to decide it based on the node
 
-		// // If we are here it means that we are doing a compile time instantiation of the functype
-		// // The name is established and will be generated elsewhere, so we just need to emit that
-		// if t.name == "append" {
-		// 	buf.Add("CUSTOM2")
-		// } else {
-		// 	buf.Add(t.Type().Name())
-		// }
+		// If we are here it means that we are doing a compile time instantiation of the functype
+		// The name is established and will be generated elsewhere, so we just need to emit that
+		if tt.name == "append" {
+			buf.Add("__ko_").
+				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
+				Add("_slice_append")
+		} else if tt.name == "len" {
+			buf.Add("__ko_").
+				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
+				Add("_slice_len")
+		} else {
+			buf.Add(t.Type().Name())
+		}
 	default:
 		panic(fmt.Sprintf("Unknown Type: %T", t.callee.Type()))
 	}

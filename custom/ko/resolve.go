@@ -61,7 +61,7 @@ func (r *Resolver) Scope() *Scope {
 }
 
 func (r *Resolver) AddIdent(name string, n Node) {
-	fmt.Println("AddIdent", name)
+	Println("AddIdent", name)
 
 	// Check Shadowing
 	_, exists := r.CheckScope(name)
@@ -213,7 +213,7 @@ func NewResolver() *Resolver {
 	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
 
 	builtin.AddIdent("append", &BuiltinNode{AppendBuiltinType})
-	// builtin.AddIdent("len", &BuiltinNode{LenBuiltinType})
+	builtin.AddIdent("len", &BuiltinNode{LenBuiltinType})
 
 	// Add builtin types
 	builtin.AddIdent("nil", &BuiltinNode{PointerLitType})
@@ -593,7 +593,6 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		return t.ty
 
 	case *GetExpr:
-		Println("GetExpr:", t)
 		r.resolveLocal(t.obj)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
@@ -601,16 +600,19 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			errUndefinedVar(t, t.name.str)
 		}
 		t.ty = n.Type()
+		Println("GetExpr:", t)
+
 		return t.ty
 
 	case *SetExpr:
-		Println("SetExpr:", t)
 		t.ty = r.resolveLocal(t.obj)
+		r.resolveLocal(t.value)
 
 		n, ok := r.CheckScopeField(t.obj, t.name.str)
 		if !ok {
 			errUndefinedVar(t, t.name.str)
 		}
+		Println("SetExpr:", t)
 		return n.Type()
 	case *IndexExpr:
 		Println("IndexExpr:", t)
@@ -658,6 +660,10 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		valType := r.resolveLocal(t.value)
 		objType := r.resolveLocal(t.name)
 		Println("AssignTypes:", valType, objType)
+
+		if valType == UnknownType || objType == UnknownType {
+			nodeError(t, fmt.Sprintf("UnknownAssignmentType: %s, %s", objType.Name(), valType.Name()))
+		}
 
 		// objType := n.Type()
 		if !tryCast(valType, objType) {

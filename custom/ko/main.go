@@ -12,6 +12,7 @@ import (
 // TODO: Flags
 var Debug = true // Toggle this to enable/disable debug output
 var GenerateFile = true
+var GenerateOnly = false
 
 const BuildDirectory = "./out/"
 
@@ -101,6 +102,8 @@ func compile(inputFile string) {
 
 	result.genericInstantiations = resolver.genericInstantiations
 
+	// DebugTree(result.file, 0)
+
 	// ---
 
 	fmt.Println(time.Since(now))
@@ -108,6 +111,25 @@ func compile(inputFile string) {
 	fmt.Printf("Generating: ")
 	err = os.MkdirAll(BuildDirectory, 0700)
 	if err != nil { panic(err) }
+
+	// If generate only mode
+	if GenerateOnly {
+		debugFile, err := os.Create(BuildDirectory + "main.c")
+		if err != nil {
+			panic(err)
+		}
+		defer debugFile.Close()
+		fileWriter := bufio.NewWriter(debugFile)
+
+		buf := &genBuf{
+			buf: fileWriter,
+		}
+		buf.Generate(result)
+
+		err = fileWriter.Flush()
+		if err != nil { panic(err) }
+		return
+	}
 
 	cmd := pipeCompile()
 	pipeFile, err := cmd.StdinPipe()
@@ -143,7 +165,7 @@ func compile(inputFile string) {
 
 	err = pipeWriter.Flush()
 	if err != nil { panic(err) }
-	err = fileWriter.Flush() // TODO: Error check?
+	err = fileWriter.Flush()
 	if err != nil { panic(err) }
 
 	err = pipeFile.Close()

@@ -167,6 +167,7 @@ func tryCast(a, b Type) bool {
 	return false
 }
 
+// try to cast a to type b
 func tryBasicTypeCast(a, b *BasicType) bool {
 	switch a {
 	case IntLitType:
@@ -179,6 +180,7 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 		// Println("FloatLitCast:", a, b, ok)
 		return ok
 	}
+
 	return false
 }
 

@@ -13,6 +13,7 @@ void {{.Name}}_free({{.Name}}* s);
 void {{.Name}}_set({{.Name}}* s, size_t index, {{.Type}} value);
 
 void {{.Name}}_append({{.Name}}* s, {{.Type}} value);
+size_t {{.Name}}_len({{.Name}} s);
 
 {{.Name}} {{.Name}}_new(size_t capacity) {
     {{.Name}} s;
@@ -56,6 +57,10 @@ void {{.Name}}_append({{.Name}}* s, {{.Type}} value) {
     printf("append: cap: %d len: %d val: %d\n", s->cap, s->len, value);
 
     s->a[s->len++] = value;
+}
+
+size_t {{.Name}}_len({{.Name}} s) {
+     return s.len;
 }
 
 {{.Type}} {{.Name}}_get({{.Name}}* s, size_t index) {
