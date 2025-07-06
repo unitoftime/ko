@@ -353,3 +353,8 @@ func TestString() {
 
 	ko_printf("%s %s", str, str2)
 }
+
+const MYCONST = 5
+func TestConstants() {
+	const STRING = "asdf"
+}

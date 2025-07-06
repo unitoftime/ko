@@ -294,6 +294,8 @@ void TestMalloc (void);
 void TestGeneric (void);
 #line 348 "./tests/test.k"
 void TestString (void);
+#line 358 "./tests/test.k"
+void TestConstants (void);
 #line 296 "./tests/test.k"
 int func_genericAdd_int (int a , int b );
 struct Point {
@@ -322,6 +324,8 @@ int func_genericAdd_int (int a , int b ) {
 int globA = 5;
 #line 194 "./tests/test.k"
 Point globPoint = { 2, 3 };
+#line 357 "./tests/test.k"
+int MYCONST = 5;
 // package main
 #line 16 "./tests/test.k"
 int main (void) {
@@ -604,4 +608,8 @@ void TestString (void) {
 	__ko_string str = __ko_string_make("hello");
 	__ko_string str2 = __ko_string_make("world");
 	ko_printf(__ko_string_make("%s %s"), str, str2);
+}
+#line 358 "./tests/test.k"
+void TestConstants (void) {
+	__ko_string STRING = __ko_string_make("asdf");
 }

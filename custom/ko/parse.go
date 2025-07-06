@@ -241,6 +241,7 @@ func (n *TypeNode) Type() Type {
 type VarStmt struct {
 	name Token
 	global bool
+	constant bool
 	typeSpec Node
 	initExpr Node
 	ty Type
@@ -662,6 +663,8 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 	case VAR:
 		tokens.Consume(VAR)
 		return p.varDecl(globalScope)
+	case CONST:
+		return p.constDecl(globalScope)
 	case IF:
 		tokens.Consume(IF)
 		return p.ifStatement(tokens)
@@ -1010,7 +1013,38 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	Println(initExpr)
 
 	p.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, typeSpec, initExpr, UnknownType}
+	stmt := &VarStmt{name, globalScope, false, typeSpec, initExpr, UnknownType}
+
+	if globalScope {
+		p.varList = append(p.varList, stmt)
+	}
+	return stmt
+}
+
+func (p *Parser) constDecl(globalScope bool) *VarStmt {
+	p.tokens.Consume(CONST)
+
+	tokens := p.tokens
+	name := tokens.Next()
+
+	// TODO: Parse const expression, must have an init expr
+	var initExpr Node
+	var typeSpec Node
+	if tokens.Peek().token == EQUAL {
+		tokens.Next()
+		initExpr = p.ParseConstExpression()
+	} else if tokens.Peek().token == WALRUS {
+		tokens.Next()
+		initExpr = p.ParseConstExpression()
+	} else {
+		// Parse the type
+		typeSpec = p.ParseTypeNode()
+	}
+
+	Println(initExpr)
+
+	p.Consume(SEMI)
+	stmt := &VarStmt{name, globalScope, true, typeSpec, initExpr, UnknownType}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -1125,6 +1159,10 @@ func (p *Parser) ParseTypeNode() *TypeNode {
 
 func (p *Parser) ParseExpression() Node {
 	return p.Assignment(p.tokens)
+}
+
+func (p *Parser) ParseConstExpression() Node {
+	return p.ParseExprPrimary(p.tokens)
 }
 
 func (p *Parser) Assignment(tokens *Tokens) Node {

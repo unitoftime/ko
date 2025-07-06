@@ -68,6 +68,7 @@ const (
 	STRUCT
 	TYPE
 	VAR
+	CONST
 	RETURN
 	IF
 	ELSE
@@ -136,6 +137,7 @@ var tokens = []string{
 	STRUCT: "struct",
 	TYPE: "type",
 	VAR: "var",
+	CONST: "const",
 	RETURN: "return",
 	IF: "if",
 	ELSE: "else",
@@ -155,6 +157,7 @@ var keywordList = map[string]TokenType{
 	tokens[STRUCT]: STRUCT,
 	tokens[TYPE]: TYPE,
 	tokens[VAR]: VAR,
+	tokens[CONST]: CONST,
 	tokens[RETURN]: RETURN,
 	tokens[IF]: IF,
 	tokens[ELSE]: ELSE,
