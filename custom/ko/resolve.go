@@ -113,7 +113,7 @@ func (r *Resolver) CheckScopeField(obj Node, field string) (Node, bool) {
 		return getField(structNode, field)
 	case *Arg:
 		Println("CheckField:.Arg:", t, t.Type().Name(), field)
-		argTypeName := t.Type().Name()
+		argTypeName := t.Type().Underlying().Name()
 		structNode, ok := r.CheckScope(argTypeName)
 		if !ok {
 			errUndefinedType(structNode, argTypeName)
@@ -473,9 +473,15 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		Println("ForStmt:", t)
 		// TODO: Invalid unless in function
 		r.PushScope()
-		r.resolveLocal(t.init)
-		r.resolveLocal(t.cond)
-		r.resolveLocal(t.inc)
+		if t.init != nil {
+			r.resolveLocal(t.init)
+		}
+		if t.cond != nil {
+			r.resolveLocal(t.cond)
+		}
+		if t.inc != nil {
+			r.resolveLocal(t.inc)
+		}
 
 		r.resolveLocal(t.body)
 		r.PopScope()
@@ -953,7 +959,14 @@ func (r *Resolver) ResolveTypeNodeExpr(n Node) Type {
 			panic("Must be a type!") // TODO: Improve error msg
 		}
 
-		t.ty = node.Type()
+		// TODO: Here we need to recursively resolve the type node expression again
+		t.ty = r.resolveLocal(node)
+		// t.ty = node.Type()
+
+		if t.ty == nil {
+			panic("AAAA")
+		}
+
 		Println("TYPETYPETYPE: ", node.Type())
 
 		return t.ty

@@ -222,9 +222,14 @@ func (buf *genBuf) PrintForwardDecl(n Node) bool {
 		buf.
 			Add(typeStr).
 			Add(" ").
-			Add(t.name.str).
-			Add(" = ")
-		buf.Print(t.initExpr)
+			Add(t.name.str)
+
+		if t.initExpr != nil {
+			buf.Add(" = ")
+			buf.Print(t.initExpr)
+		} else {
+			// TODO: possible composit literal: Assign all default values
+		}
 	case *FuncNode:
 		if t.body == nil { return false }
 		if t.Generic() { return false } // TODO: Eventually handle these
@@ -543,11 +548,17 @@ func (buf *genBuf) Print(n Node) {
 		// buf.Add(";").Line()
 	case *ForStmt:
 		buf.Add("for (")
-		buf.Print(t.init)
+		if t.init != nil {
+			buf.Print(t.init)
+		}
 		buf.Add("; ")
-		buf.Print(t.cond)
+		if t.cond != nil {
+			buf.Print(t.cond)
+		}
 		buf.Add("; ")
-		buf.Print(t.inc)
+		if t.inc != nil {
+			buf.Print(t.inc)
+		}
 		buf.Add(") {").Line()
 		buf.Print(t.body)
 		buf.Add("}")

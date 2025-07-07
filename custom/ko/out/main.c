@@ -159,92 +159,10 @@ void ko_printf(__ko_string format, ...) {
 /* } */
 
 int __mainRet__ = 0;
+typedef struct VirtualMachine VirtualMachine;
+bool __ko_VirtualMachine_equality(VirtualMachine a, VirtualMachine b);
 typedef struct Chunk Chunk;
 bool __ko_Chunk_equality(Chunk a, Chunk b);
-typedef struct __ko_double_slice __ko_double_slice;
-
-struct __ko_double_slice {
-    double* a;
-    size_t len;
-    size_t cap;
-};
-
-// Protos
-__ko_double_slice __ko_double_slice_new(size_t capacity);
-__ko_double_slice __ko_double_slice_init(const double* values, size_t count);
-void __ko_double_slice_free(__ko_double_slice* s);
-double __ko_double_slice_get(__ko_double_slice* s, size_t index);
-void __ko_double_slice_set(__ko_double_slice* s, size_t index, double value);
-bool __ko___ko_double_slice_equality(__ko_double_slice a, __ko_double_slice b);
-
-void __ko_double_slice_append(__ko_double_slice* s, double value);
-size_t __ko_double_slice_len(__ko_double_slice s);
-
-__ko_double_slice __ko_double_slice_new(size_t capacity) {
-    __ko_double_slice s;
-    s.a = (double*)malloc(capacity * sizeof(double));
-    s.len = 0;
-    s.cap = capacity;
-    return s;
-}
-__ko_double_slice __ko_double_slice_init(const double* values, size_t count) {
-  __ko_double_slice s = __ko_double_slice_new(count);
-  memcpy(s.a, values, sizeof(double) * count);
-  s.len = count;
-  return s;
-}
-
-bool __ko___ko_double_slice_equality(__ko_double_slice a, __ko_double_slice b) {
-     return (a.a == b.a) && (a.len == b.len) && (a.cap == b.cap);
-}
-
-void __ko_double_slice_free(__ko_double_slice* s) {
-    if (s->a != NULL) {
-        free(s->a);
-        s->a = NULL;
-    }
-    s->len = 0;
-    s->cap = 0;
-}
-
-void __ko_double_slice_append(__ko_double_slice* s, double value) {
-    if (s->len >= s->cap) {
-        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
-        double* new_data = (double*)realloc(s->a, new_cap * sizeof(double));
-        if (!new_data) {
-            fprintf(stderr, "Out of memory in append()\n");
-            exit(1);
-        }
-        s->a = new_data;
-        s->cap = new_cap;
-    }
-
-    s->a[s->len] = value;
-    s->len++;
-
-//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
-}
-
-size_t __ko_double_slice_len(__ko_double_slice s) {
-     return s.len;
-}
-
-double __ko_double_slice_get(__ko_double_slice* s, size_t index) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in get()\n");
-        exit(1);
-    }
-    return s->a[index];
-}
-
-void __ko_double_slice_set(__ko_double_slice* s, size_t index, double value) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in set()\n");
-        exit(1);
-    }
-    s->a[index] = value;
-}
-
 typedef struct __ko_uint8_t_slice __ko_uint8_t_slice;
 
 struct __ko_uint8_t_slice {
@@ -413,23 +331,118 @@ void __ko_int_slice_set(__ko_int_slice* s, size_t index, int value) {
     s->a[index] = value;
 }
 
+typedef struct __ko_double_slice __ko_double_slice;
+
+struct __ko_double_slice {
+    double* a;
+    size_t len;
+    size_t cap;
+};
+
+// Protos
+__ko_double_slice __ko_double_slice_new(size_t capacity);
+__ko_double_slice __ko_double_slice_init(const double* values, size_t count);
+void __ko_double_slice_free(__ko_double_slice* s);
+double __ko_double_slice_get(__ko_double_slice* s, size_t index);
+void __ko_double_slice_set(__ko_double_slice* s, size_t index, double value);
+bool __ko___ko_double_slice_equality(__ko_double_slice a, __ko_double_slice b);
+
+void __ko_double_slice_append(__ko_double_slice* s, double value);
+size_t __ko_double_slice_len(__ko_double_slice s);
+
+__ko_double_slice __ko_double_slice_new(size_t capacity) {
+    __ko_double_slice s;
+    s.a = (double*)malloc(capacity * sizeof(double));
+    s.len = 0;
+    s.cap = capacity;
+    return s;
+}
+__ko_double_slice __ko_double_slice_init(const double* values, size_t count) {
+  __ko_double_slice s = __ko_double_slice_new(count);
+  memcpy(s.a, values, sizeof(double) * count);
+  s.len = count;
+  return s;
+}
+
+bool __ko___ko_double_slice_equality(__ko_double_slice a, __ko_double_slice b) {
+     return (a.a == b.a) && (a.len == b.len) && (a.cap == b.cap);
+}
+
+void __ko_double_slice_free(__ko_double_slice* s) {
+    if (s->a != NULL) {
+        free(s->a);
+        s->a = NULL;
+    }
+    s->len = 0;
+    s->cap = 0;
+}
+
+void __ko_double_slice_append(__ko_double_slice* s, double value) {
+    if (s->len >= s->cap) {
+        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
+        double* new_data = (double*)realloc(s->a, new_cap * sizeof(double));
+        if (!new_data) {
+            fprintf(stderr, "Out of memory in append()\n");
+            exit(1);
+        }
+        s->a = new_data;
+        s->cap = new_cap;
+    }
+
+    s->a[s->len] = value;
+    s->len++;
+
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+}
+
+size_t __ko_double_slice_len(__ko_double_slice s) {
+     return s.len;
+}
+
+double __ko_double_slice_get(__ko_double_slice* s, size_t index) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in get()\n");
+        exit(1);
+    }
+    return s->a[index];
+}
+
+void __ko_double_slice_set(__ko_double_slice* s, size_t index, double value) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in set()\n");
+        exit(1);
+    }
+    s->a[index] = value;
+}
+
 
 #line 9 "./cmd/interp/main.k"
 int main (void);
-#line 36 "./cmd/interp/main.k"
-void writeChunk (Chunk* chunk , uint8_t dat , int line );
 #line 41 "./cmd/interp/main.k"
+int interpret (Chunk* chunk );
+#line 47 "./cmd/interp/main.k"
+int run (void);
+#line 70 "./cmd/interp/main.k"
+void writeChunk (Chunk* chunk , uint8_t dat , int line );
+#line 75 "./cmd/interp/main.k"
 uint8_t addConstant (Chunk* chunk , double value );
-#line 48 "./cmd/interp/main.k"
+#line 82 "./cmd/interp/main.k"
 void disassembleChunk (Chunk* chunk , __ko_string name );
-#line 55 "./cmd/interp/main.k"
+#line 89 "./cmd/interp/main.k"
 int disassembleInstruction (Chunk* chunk , int offset );
-#line 80 "./cmd/interp/main.k"
+#line 114 "./cmd/interp/main.k"
 int simpleInstruction (__ko_string name , int offset );
-#line 85 "./cmd/interp/main.k"
+#line 119 "./cmd/interp/main.k"
 int constantInstruction (__ko_string name , Chunk* chunk , int offset );
-#line 95 "./cmd/interp/main.k"
+#line 129 "./cmd/interp/main.k"
 void printValue (double value );
+struct VirtualMachine {
+	Chunk* chunk;
+	uint8_t* ip;
+};
+bool __ko_VirtualMachine_equality(VirtualMachine a, VirtualMachine b){
+	return ((a.chunk == b.chunk) && (a.ip == b.ip));
+}
 struct Chunk {
 	__ko_uint8_t_slice code;
 	__ko_double_slice values;
@@ -438,9 +451,17 @@ struct Chunk {
 bool __ko_Chunk_equality(Chunk a, Chunk b){
 	return ((__ko___ko_uint8_t_slice_equality(a.code, b.code) == true) && (__ko___ko_double_slice_equality(a.values, b.values) == true) && (__ko___ko_int_slice_equality(a.lines, b.lines) == true));
 }
-#line 26 "./cmd/interp/main.k"
+#line 28 "./cmd/interp/main.k"
+VirtualMachine vm;
+#line 37 "./cmd/interp/main.k"
+int InterpretOk = 0;
+#line 38 "./cmd/interp/main.k"
+int InterpretCompileError = 1;
+#line 39 "./cmd/interp/main.k"
+int InterpretRuntimeError = 2;
+#line 60 "./cmd/interp/main.k"
 int OpReturn = 0;
-#line 27 "./cmd/interp/main.k"
+#line 61 "./cmd/interp/main.k"
 int OpConstant = 1;
 // package main
 #line 9 "./cmd/interp/main.k"
@@ -452,29 +473,48 @@ int main (void) {
 	writeChunk((&chunk), 1, 123);
 	writeChunk((&chunk), c, 123);
 	writeChunk((&chunk), 0, 123);
-	;
 	disassembleChunk((&chunk), __ko_string_make("test"));
+	interpret((&chunk));
+	;
 return __mainRet__;
 }
-#line 36 "./cmd/interp/main.k"
+#line 41 "./cmd/interp/main.k"
+int interpret (Chunk* chunk ) {
+	vm.chunk = chunk;
+	vm.ip = (&vm.chunk->code.a[0]);
+	return (run());
+}
+#line 47 "./cmd/interp/main.k"
+int run (void) {
+	for (; ; ) {
+		uint8_t instruction = (*vm.ip);
+		(vm.ip++);
+		switch (instruction) {
+		case 0:
+			return (0);
+		break;
+		};
+	};
+}
+#line 70 "./cmd/interp/main.k"
 void writeChunk (Chunk* chunk , uint8_t dat , int line ) {
 	__ko_uint8_t_slice_append((&chunk->code), dat);
 	__ko_int_slice_append((&chunk->lines), line);
 }
-#line 41 "./cmd/interp/main.k"
+#line 75 "./cmd/interp/main.k"
 uint8_t addConstant (Chunk* chunk , double value ) {
 	__ko_double_slice_append((&chunk->values), value);
 	int ret = (__ko_double_slice_len(chunk->values) - 1);
 	return ((uint8_t)(ret));
 }
-#line 48 "./cmd/interp/main.k"
+#line 82 "./cmd/interp/main.k"
 void disassembleChunk (Chunk* chunk , __ko_string name ) {
 	ko_printf(__ko_string_make("== %s ==\n"), name);
 	for (int offset = 0; (offset < __ko_uint8_t_slice_len(chunk->code)); NULL) {
 		offset = disassembleInstruction(chunk, offset);
 	};
 }
-#line 55 "./cmd/interp/main.k"
+#line 89 "./cmd/interp/main.k"
 int disassembleInstruction (Chunk* chunk , int offset ) {
 	;
 	;
@@ -500,12 +540,12 @@ int disassembleInstruction (Chunk* chunk , int offset ) {
 	break;
 	};
 }
-#line 80 "./cmd/interp/main.k"
+#line 114 "./cmd/interp/main.k"
 int simpleInstruction (__ko_string name , int offset ) {
 	ko_printf(__ko_string_make("%s\n"), name);
 	return ((offset + 1));
 }
-#line 85 "./cmd/interp/main.k"
+#line 119 "./cmd/interp/main.k"
 int constantInstruction (__ko_string name , Chunk* chunk , int offset ) {
 	int cIdx = (int)(chunk->code.a[(offset + 1)]);
 	;
@@ -514,7 +554,7 @@ int constantInstruction (__ko_string name , Chunk* chunk , int offset ) {
 	ko_printf(__ko_string_make("\n"));
 	return ((offset + 2));
 }
-#line 95 "./cmd/interp/main.k"
+#line 129 "./cmd/interp/main.k"
 void printValue (double value ) {
 	ko_printf(__ko_string_make("%g"), value);
 }

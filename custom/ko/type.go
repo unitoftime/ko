@@ -78,7 +78,7 @@ type ArrayType struct {
 	base Type
 }
 func (t *ArrayType) Underlying() Type {
-	return t
+	return t.base
 }
 func (t *ArrayType) Name() string {
 	return fmt.Sprintf("[%d]%s", t.len, t.base.Name())
@@ -88,7 +88,7 @@ type SliceType struct {
 	base Type
 }
 func (t *SliceType) Underlying() Type {
-	return t
+	return t.base
 }
 func (t *SliceType) Name() string {
 	return fmt.Sprintf("[]%s", t.base.Name())

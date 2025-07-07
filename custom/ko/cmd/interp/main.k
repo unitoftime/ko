@@ -17,9 +17,43 @@ func main() {
 	writeChunk(&chunk, c, 123)
 
 	writeChunk(&chunk, OpReturn, 123)
-	// TODO: Free chunk
 
 	disassembleChunk(&chunk, "test")
+
+	interpret(&chunk)
+
+	// TODO: Free chunk, VM, etc
+}
+
+var vm VirtualMachine
+
+// Array?
+type VirtualMachine struct {
+	chunk *Chunk
+	ip *u8
+}
+
+// TODO: Typed Enumeration
+const InterpretOk = 0
+const InterpretCompileError = 1
+const InterpretRuntimeError = 2
+
+func interpret(chunk *Chunk) int {
+	vm.chunk = chunk
+	vm.ip = &vm.chunk.code[0]
+	return run()
+}
+
+func run() int {
+	for ;;; {
+		instruction := *vm.ip
+		vm.ip++
+		switch instruction {
+
+		case OpReturn:
+			return InterpretOk
+		}
+	}
 }
 
 // type Opcode enum

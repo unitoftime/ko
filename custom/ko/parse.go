@@ -26,6 +26,10 @@ func errIdentMustBeAType(n Node, name string) {
 }
 
 func nodeError(n Node, msg string) error {
+	if n == nil {
+		fmt.Printf("%s\n", msg)
+		panic("AAA")
+	}
 	p := n.Pos()
 	fmt.Printf("./%s:%d:%d: %s\n", p.filename, p.line, p.column, msg)
 	panic("AAA")
