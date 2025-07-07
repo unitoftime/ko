@@ -524,7 +524,8 @@ func (t *Tokens) PeekNext() Token {
 	return t.list[1]
 }
 func (t *Tokens) Next() Token {
-	t.prev = t.list[len(t.list)-1]
+	// t.prev = t.list[len(t.list)-1]
+	t.prev = t.list[0]
 	token := t.list[0]
 	t.list = t.list[1:]
 	return token

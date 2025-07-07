@@ -780,6 +780,15 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		// return t.ty
 	case *BuiltinNode:
 		return t.ty
+	case *LogicalExpr:
+		lt := r.resolveLocal(t.left)
+		rt := r.resolveLocal(t.right)
+
+		if lt != BoolType || rt != BoolType {
+			nodeError(t, "logical expression parameters must result in boolean types")
+		}
+
+		return BoolType
 	case *GenArg:
 		t.ty = r.ResolveTypeNodeExpr(t)
 		return t.ty

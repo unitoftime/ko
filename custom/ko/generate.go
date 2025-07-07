@@ -683,6 +683,16 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add("(")
 		buf.Print(t.Node)
 		buf.Add(")")
+	case *LogicalExpr:
+		buf.Add("(")
+		buf.Print(t.left)
+		buf.Add(")")
+
+		buf.Add(t.op.str)
+
+		buf.Add("(")
+		buf.Print(t.right)
+		buf.Add(")")
 	case *LitExpr:
 		if t.tok.token == NIL {
 			buf.Add("NULL")

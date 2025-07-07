@@ -8,14 +8,15 @@ foreign {
 
 func main() {
 	ko_printf("Starting Interpreter\n")
-	chunk := Chunk{[]u8{}, []f64{}}
+	// chunk := Chunk{[]u8{}, []f64{}, []int{}}
+	chunk := Chunk{}
 
 	c := addConstant(&chunk, 1.2)
-	writeChunk(&chunk, OpConstant)
-	writeChunk(&chunk, c)
+	writeChunk(&chunk, OpConstant, 123)
+	writeChunk(&chunk, c, 123)
 
 
-	writeChunk(&chunk, OpReturn)
+	writeChunk(&chunk, OpReturn, 123)
 	// TODO: Free chunk
 
 	disassembleChunk(&chunk, "test")
@@ -29,10 +30,12 @@ const OpConstant = 1
 type Chunk struct {
 	code []u8
 	values []f64
+	lines []int
 }
 
-func writeChunk(chunk *Chunk, dat u8) {
+func writeChunk(chunk *Chunk, dat u8, line int) {
 	append[u8](&chunk.code, dat)
+	append[int](&chunk.lines, line)
 }
 
 func addConstant(chunk *Chunk, value f64) u8 {
@@ -50,8 +53,18 @@ func disassembleChunk(chunk *Chunk, name string) {
 }
 
 func disassembleInstruction(chunk *Chunk, offset int) int {
+	// Print Offset
 	// ko_printf("%04d\n", offset)
-	ko_printf("%d\n", offset)
+	ko_printf("%d ", offset)
+
+	// Print Line number
+	if offset > 0 && chunk.lines[offset] == chunk.lines[offset-1] {
+		ko_printf("   | ")
+	} else {
+		ko_printf("%d ", chunk.lines[offset])
+	}
+
+	// Print Instruction
 	inst := chunk.code[offset]
 	switch inst {
 	case OpReturn:
