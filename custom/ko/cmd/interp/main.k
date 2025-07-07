@@ -12,7 +12,7 @@ func main() {
 }
 
 // type Opcode enum
-var OpReturn = 0
+const OpReturn = 0
 
 type Chunk struct {
 	code []u8

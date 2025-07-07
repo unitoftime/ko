@@ -36,6 +36,7 @@ func main() {
 	TestGeneric()
 	TestSlice()
 	TestString()
+	TestConstants()
 	// runBenchmark()
 
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
@@ -355,6 +356,9 @@ func TestString() {
 }
 
 const MYCONST = 5
+// const MyConst2 = MYCONST + 6
 func TestConstants() {
 	const STRING = "asdf"
+
+	ko_printf("Constants: %d %s\n", MYCONST, STRING)
 }

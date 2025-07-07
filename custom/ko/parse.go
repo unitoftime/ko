@@ -245,6 +245,7 @@ type VarStmt struct {
 	typeSpec Node
 	initExpr Node
 	ty Type
+	folded Node
 }
 func (n *VarStmt) Pos() Position {
 	return n.name.pos
@@ -476,6 +477,7 @@ func (n *LitExpr) Type() Type {
 type IdentExpr struct {
 	tok Token
 	ty Type
+	folded Node
 }
 func (n *IdentExpr) Pos() Position {
 	return n.tok.pos
@@ -1013,7 +1015,7 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	Println(initExpr)
 
 	p.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, false, typeSpec, initExpr, UnknownType}
+	stmt := &VarStmt{name, globalScope, false, typeSpec, initExpr, UnknownType, nil}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -1044,7 +1046,7 @@ func (p *Parser) constDecl(globalScope bool) *VarStmt {
 	Println(initExpr)
 
 	p.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, true, typeSpec, initExpr, UnknownType}
+	stmt := &VarStmt{name, globalScope, true, typeSpec, initExpr, UnknownType, nil}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -1404,10 +1406,10 @@ func (p *Parser) FinishCompLit(callee Node) *CompLitExpr {
 	return &CompLitExpr{callee, args, UnknownType}
 }
 
+
 func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	op := tokens.Peek()
 	switch op.token {
-
 	case NIL:
 		tok := tokens.Next()
 		return &LitExpr{tok, NIL, PointerLitType}
@@ -1426,7 +1428,7 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 		return &LitExpr{tok, FLOAT, FloatLitType}
 	case IDENT:
 		tok := tokens.Next()
-		return &IdentExpr{tok, UnknownType}
+		return &IdentExpr{tok, UnknownType, nil}
 	case STRING:
 		tok := tokens.Next()
 		return &LitExpr{tok, STRING, StringLitType}

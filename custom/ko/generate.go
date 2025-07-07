@@ -650,6 +650,11 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(" = ")
 		buf.Print(t.value)
 	case *IdentExpr:
+		if t.folded != nil {
+			buf.Print(t.folded)
+			break
+		}
+
 		// TODO: cleanup how we check for builtin func calls
 		if t.tok.str == "append" {
 			ft, ok := t.ty.(*FuncType)
@@ -658,9 +663,10 @@ func (buf *genBuf) Print(n Node) {
 					Add(typeNameC(ft.generics[0])). // TODO: a bit hacky
 					Add("_slice_append")
 			}
-		} else {
-			buf.Add(t.tok.str)
+			break
 		}
+
+		buf.Add(t.tok.str)
 	case *CompLitExpr:
 		buf.PrintCompLit(t)
 

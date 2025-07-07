@@ -6,9 +6,10 @@
 - [x] Pointers
 - [x] Arrays
 - [x] Foreign functions <- So I can typewrap stdlib things like malloc,free, etc
-- [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
 - [x] Comptime templating instead?
 - [x] Switch statements
+- [ ] Constant folding
+- [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
 - [ ] https://nickav.co/posts/0003_wasm_from_scratch
 - [ ] variadics
 - [ ] Super heavy runtime hotreloading emphasis

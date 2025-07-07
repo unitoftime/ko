@@ -185,7 +185,6 @@ func compile(inputFile string) {
 
 	fmt.Println(time.Since(now))
 	now = time.Now()
-	fmt.Printf("Running C Compiler: ")
 
 	err = cmd.Wait()
 	if err != nil { panic(err) }
@@ -219,6 +218,7 @@ func compile(inputFile string) {
 		// if err != nil { panic(err) }
 	}
 
+	fmt.Printf("Running C Compiler: ")
 	fmt.Println(time.Since(now))
 }
 

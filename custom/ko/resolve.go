@@ -539,6 +539,12 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		if r.LocalScope() {
 			r.AddIdent(t.name.str, t) // For global we register it before
 		}
+
+		// Fold Constant expressions as needed
+		if t.constant {
+			t.folded = r.FoldConstExpression(t.initExpr)
+		}
+
 		Printf("VarStmt.Typed: %+v\n", t)
 		return t.ty
 
@@ -734,8 +740,17 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			return UnknownType
 		}
 		t.ty = node.Type()
+
+		// For certain Indentifier types, lookup the folded constant if available
+		switch tt := node.(type) {
+		case *VarStmt:
+			if tt.constant {
+				t.folded = tt.folded
+			}
+		}
+
 		Printf("IdentExpr.Type: %T %v", t.ty, t)
-		// t.ty = r.resolveLocal(node)
+
 		return t.ty
 
 	case *CompLitExpr:
@@ -1127,4 +1142,14 @@ func (r *Resolver) InstantiateGenericFunc(t *FuncType, index *IndexExpr) Type {
 	})
 
 	return getType(finalFunc)
+}
+
+func (r *Resolver) FoldConstExpression(initExpr Node) Node {
+	switch t := initExpr.(type) {
+	case *LitExpr:
+		return t
+	default:
+		nodeError(t, fmt.Sprintf("FoldConstExpression: Unhandled type: %T", t))
+		panic("AAAA")
+	}
 }
