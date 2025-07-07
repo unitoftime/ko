@@ -10,7 +10,7 @@ import (
 )
 
 // TODO: Flags
-var Debug = true // Toggle this to enable/disable debug output
+var Debug = false // Toggle this to enable/disable debug output
 var GenerateFile = true
 var GenerateOnly = false
 
