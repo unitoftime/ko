@@ -8,7 +8,8 @@
 - [x] Foreign functions <- So I can typewrap stdlib things like malloc,free, etc
 - [x] Comptime templating instead?
 - [x] Switch statements
-- [ ] Constant folding
+- [x] Constant folding
+- [ ] Casting types
 - [ ] Error/Result/Optional Types? Generics? Multiple returns? Tupled returns?
 - [ ] https://nickav.co/posts/0003_wasm_from_scratch
 - [ ] variadics
@@ -36,6 +37,7 @@
 - [ ] prevent signed integer overflow (on adds and subtracts) - There's builtins in gcc
 - [ ] Default functions for structs: Just to have one single place that I can call to return a default struct <- maybe not needed, bc I think {0} works for all my cases
 - [ ] When assigning complits and default values, there is probably some places where I can do things like {{0}} or {0},
+- [ ] is there a warning flag I can enable to catch implicit casting? So they never happen
 
 # Things I'm unsure about
 - glibc linking vs musl

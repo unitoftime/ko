@@ -88,6 +88,11 @@ void ko_printf(__ko_string format, ...) {
         printf("%d", d); // Using standard printf for integer conversion
         break;
       }
+      case 'g': {
+        double g = va_arg(args, double);
+        printf("%g", g); // Using standard printf for integer conversion
+        break;
+      }
         // Add more cases for other format specifiers (%f, %x, etc.)
       default:
         putchar('%'); // Print '%' if unknown specifier
@@ -214,7 +219,7 @@ void __ko_double_slice_append(__ko_double_slice* s, double value) {
         s->cap = new_cap;
     }
 
-    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
 
     s->a[s->len++] = value;
 }
@@ -297,7 +302,7 @@ void __ko_uint8_t_slice_append(__ko_uint8_t_slice* s, uint8_t value) {
         s->cap = new_cap;
     }
 
-    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
 
     s->a[s->len++] = value;
 }
@@ -328,13 +333,17 @@ int main (void);
 #line 34 "./cmd/interp/main.k"
 void writeChunk (Chunk* chunk , uint8_t dat );
 #line 38 "./cmd/interp/main.k"
-int addConstant (Chunk* chunk , double value );
-#line 44 "./cmd/interp/main.k"
+uint8_t addConstant (Chunk* chunk , double value );
+#line 45 "./cmd/interp/main.k"
 void disassembleChunk (Chunk* chunk , __ko_string name );
-#line 51 "./cmd/interp/main.k"
+#line 52 "./cmd/interp/main.k"
 int disassembleInstruction (Chunk* chunk , int offset );
-#line 64 "./cmd/interp/main.k"
+#line 67 "./cmd/interp/main.k"
 int simpleInstruction (__ko_string name , int offset );
+#line 72 "./cmd/interp/main.k"
+int constantInstruction (__ko_string name , Chunk* chunk , int offset );
+#line 82 "./cmd/interp/main.k"
+void printValue (double value );
 struct Chunk {
 	__ko_uint8_t_slice code;
 	__ko_double_slice values;
@@ -351,7 +360,7 @@ int OpConstant = 1;
 int main (void) {
 	ko_printf(__ko_string_make("Starting Interpreter\n"));
 	Chunk chunk = (Chunk){ {0}, {0} };
-	int c = addConstant((&chunk), 1.2);
+	uint8_t c = addConstant((&chunk), 1.2);
 	writeChunk((&chunk), 1);
 	writeChunk((&chunk), c);
 	writeChunk((&chunk), 0);
@@ -364,18 +373,19 @@ void writeChunk (Chunk* chunk , uint8_t dat ) {
 	__ko_uint8_t_slice_append((&chunk->code), dat);
 }
 #line 38 "./cmd/interp/main.k"
-int addConstant (Chunk* chunk , double value ) {
+uint8_t addConstant (Chunk* chunk , double value ) {
 	__ko_double_slice_append((&chunk->values), value);
-	return ((__ko_double_slice_len(chunk->values) - 1));
+	int ret = (__ko_double_slice_len(chunk->values) - 1);
+	return ((uint8_t)(ret));
 }
-#line 44 "./cmd/interp/main.k"
+#line 45 "./cmd/interp/main.k"
 void disassembleChunk (Chunk* chunk , __ko_string name ) {
 	ko_printf(__ko_string_make("== %s ==\n"), name);
 	for (int offset = 0; (offset < __ko_uint8_t_slice_len(chunk->code)); (offset++)) {
 		offset = disassembleInstruction(chunk, offset);
 	};
 }
-#line 51 "./cmd/interp/main.k"
+#line 52 "./cmd/interp/main.k"
 int disassembleInstruction (Chunk* chunk , int offset ) {
 	;
 	ko_printf(__ko_string_make("%d\n"), offset);
@@ -384,14 +394,30 @@ int disassembleInstruction (Chunk* chunk , int offset ) {
 	case 0:
 		return (simpleInstruction(__ko_string_make("OP_RETURN"), offset));
 	break;
+	case 1:
+		return (constantInstruction(__ko_string_make("OP_CONSTANT"), chunk, offset));
+	break;
 	default:
 		ko_printf(__ko_string_make("Unknown opCode; %d\n"), inst);
 		return ((offset + 1));
 	break;
 	};
 }
-#line 64 "./cmd/interp/main.k"
+#line 67 "./cmd/interp/main.k"
 int simpleInstruction (__ko_string name , int offset ) {
 	ko_printf(__ko_string_make("%s\n"), name);
 	return ((offset + 1));
+}
+#line 72 "./cmd/interp/main.k"
+int constantInstruction (__ko_string name , Chunk* chunk , int offset ) {
+	int cIdx = (int)(chunk->code.a[(offset + 1)]);
+	;
+	ko_printf(__ko_string_make("%s %d "), name, cIdx);
+	printValue(chunk->values.a[cIdx]);
+	ko_printf(__ko_string_make("\n"));
+	return ((offset + 2));
+}
+#line 82 "./cmd/interp/main.k"
+void printValue (double value ) {
+	ko_printf(__ko_string_make("%g"), value);
 }

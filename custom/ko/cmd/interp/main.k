@@ -35,9 +35,10 @@ func writeChunk(chunk *Chunk, dat u8) {
 	append[u8](&chunk.code, dat)
 }
 
-func addConstant(chunk *Chunk, value f64) int {
+func addConstant(chunk *Chunk, value f64) u8 {
 	append[f64](&chunk.values, value)
-	return len[f64](chunk.values) - 1
+	ret := len[f64](chunk.values) - 1
+	return u8(ret)
 }
 
 // name string
@@ -71,7 +72,7 @@ func simpleInstruction(name string, offset int) int {
 func constantInstruction(name string, chunk *Chunk, offset int) int {
 	cIdx := int(chunk.code[offset+1])
 	// printf("%-16s %4d '", name, constant);
-	ko_printf("%s %d", name, cIdx)
+	ko_printf("%s %d ", name, cIdx)
 	printValue(chunk.values[cIdx])
 	ko_printf("\n")
 
@@ -79,5 +80,5 @@ func constantInstruction(name string, chunk *Chunk, offset int) int {
 }
 
 func printValue(value f64) {
-	printf("%g", value)
+	ko_printf("%g", value)
 }

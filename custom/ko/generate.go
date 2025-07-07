@@ -284,7 +284,25 @@ func (buf *genBuf) PrintCompleteType(n Node) {
 	}
 }
 
+func (buf *genBuf) PrintCallExpr(ce *CallExpr) {
+	switch t := ce.callee.Type().(type) {
+	case *FuncType:
+		buf.Print(ce.callee)
+		buf.Add("(")
+		buf.PrintArgList(ce.args)
+		buf.Add(")")
+	case *BasicType:
+		buf.Add("(")
+		buf.Add(typeNameC(t))
+		buf.Add(")")
+		buf.Add("(")
+		buf.PrintArgList(ce.args)
+		buf.Add(")")
+	default:
 
+		panic(fmt.Sprintf("PrintCallExpr: Unknown NodeType: %T", t))
+	}
+}
 
 func (buf *genBuf) PrintArgList(args []Node) {
 	for i := range args {
@@ -613,16 +631,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(")") // buf.Add(");").Line()
 
 	case *CallExpr:
-		// if t.callee.Type() == AppendBuiltinType {
-		// 	// __ko_uint8_t_slice_append
-		// 	buf.Add("__ko_int_slice_append")
-		// } else {
-		buf.Print(t.callee)
-		// }
-
-		buf.Add("(")
-		buf.PrintArgList(t.args)
-		buf.Add(")")
+		buf.PrintCallExpr(t)
 	case *GetExpr:
 		buf.selectorExpr(t.obj, t.name.str)
 	case *SetExpr:

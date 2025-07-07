@@ -37,6 +37,7 @@ func main() {
 	TestSlice()
 	TestString()
 	TestConstants()
+	TestCasting()
 	// runBenchmark()
 
 	// printf("BacktraceTest: %d\n", backtraceTest(5))
@@ -361,4 +362,9 @@ func TestConstants() {
 	const STRING = "asdf"
 
 	ko_printf("Constants: %d %s\n", MYCONST, STRING)
+}
+
+func TestCasting() {
+	var x = 5
+	y := u8(x)
 }

@@ -591,19 +591,25 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		Println("CallExpr:", t)
 		callTy := r.resolveLocal(t.callee)
 
-		funcType, ok := callTy.(*FuncType)
-		if !ok {
-			nodeError(t, "call expressions must be function types")
-		}
-
 		// TODO: infer generic types
 
 		// TODO: validate argument types match
 		for i := range t.args {
 			r.resolveLocal(t.args[i])
 		}
-		t.ty = funcType.returns
-		return t.ty
+
+		switch tt := callTy.(type) {
+		case *FuncType:
+			t.ty = tt.returns
+			return t.ty
+		case *BasicType:
+			// TODO: validate typecast argument can cast to output type
+			// TODO: Validate there is only one thing passed into cast operation
+			t.ty = tt
+			return t.ty
+		default:
+			nodeError(t, fmt.Sprintf("Unexpected call expressions type: %T", tt))
+		}
 
 	case *GetExpr:
 		r.resolveLocal(t.obj)
@@ -741,9 +747,9 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		}
 		t.ty = node.Type()
 
-		// For certain Indentifier types, lookup the folded constant if available
 		switch tt := node.(type) {
 		case *VarStmt:
+			// For certain Indentifier types, lookup the folded constant if available
 			if tt.constant {
 				t.folded = tt.folded
 			}

@@ -88,6 +88,11 @@ void ko_printf(__ko_string format, ...) {
         printf("%d", d); // Using standard printf for integer conversion
         break;
       }
+      case 'g': {
+        double g = va_arg(args, double);
+        printf("%g", g); // Using standard printf for integer conversion
+        break;
+      }
         // Add more cases for other format specifiers (%f, %x, etc.)
       default:
         putchar('%'); // Print '%' if unknown specifier
