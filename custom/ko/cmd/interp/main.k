@@ -12,9 +12,9 @@ func main() {
 	chunk := Chunk{}
 
 	c := addConstant(&chunk, 1.2)
+
 	writeChunk(&chunk, OpConstant, 123)
 	writeChunk(&chunk, c, 123)
-
 
 	writeChunk(&chunk, OpReturn, 123)
 	// TODO: Free chunk
@@ -47,7 +47,7 @@ func addConstant(chunk *Chunk, value f64) u8 {
 // name string
 func disassembleChunk(chunk *Chunk, name string) {
 	ko_printf("== %s ==\n", name)
-	for offset := 0; offset < len[u8](chunk.code); offset++ {
+	for offset := 0; offset < len[u8](chunk.code); nil {
 		offset = disassembleInstruction(chunk, offset)
 	}
 }

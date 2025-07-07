@@ -161,89 +161,6 @@ void ko_printf(__ko_string format, ...) {
 int __mainRet__ = 0;
 typedef struct Chunk Chunk;
 bool __ko_Chunk_equality(Chunk a, Chunk b);
-typedef struct __ko_uint8_t_slice __ko_uint8_t_slice;
-
-struct __ko_uint8_t_slice {
-    uint8_t* a;
-    size_t len;
-    size_t cap;
-};
-
-// Protos
-__ko_uint8_t_slice __ko_uint8_t_slice_new(size_t capacity);
-__ko_uint8_t_slice __ko_uint8_t_slice_init(const uint8_t* values, size_t count);
-void __ko_uint8_t_slice_free(__ko_uint8_t_slice* s);
-uint8_t __ko_uint8_t_slice_get(__ko_uint8_t_slice* s, size_t index);
-void __ko_uint8_t_slice_set(__ko_uint8_t_slice* s, size_t index, uint8_t value);
-bool __ko___ko_uint8_t_slice_equality(__ko_uint8_t_slice a, __ko_uint8_t_slice b);
-
-void __ko_uint8_t_slice_append(__ko_uint8_t_slice* s, uint8_t value);
-size_t __ko_uint8_t_slice_len(__ko_uint8_t_slice s);
-
-__ko_uint8_t_slice __ko_uint8_t_slice_new(size_t capacity) {
-    __ko_uint8_t_slice s;
-    s.a = (uint8_t*)malloc(capacity * sizeof(uint8_t));
-    s.len = 0;
-    s.cap = capacity;
-    return s;
-}
-__ko_uint8_t_slice __ko_uint8_t_slice_init(const uint8_t* values, size_t count) {
-  __ko_uint8_t_slice s = __ko_uint8_t_slice_new(count);
-  memcpy(s.a, values, sizeof(uint8_t) * count);
-  s.len = count;
-  return s;
-}
-
-bool __ko___ko_uint8_t_slice_equality(__ko_uint8_t_slice a, __ko_uint8_t_slice b) {
-     return (a.a == b.a) && (a.len == b.len) && (a.cap == b.cap);
-}
-
-void __ko_uint8_t_slice_free(__ko_uint8_t_slice* s) {
-    if (s->a != NULL) {
-        free(s->a);
-        s->a = NULL;
-    }
-    s->len = 0;
-    s->cap = 0;
-}
-
-void __ko_uint8_t_slice_append(__ko_uint8_t_slice* s, uint8_t value) {
-    if (s->len >= s->cap) {
-        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
-        uint8_t* new_data = (uint8_t*)realloc(s->a, new_cap * sizeof(uint8_t));
-        if (!new_data) {
-            fprintf(stderr, "Out of memory in append()\n");
-            exit(1);
-        }
-        s->a = new_data;
-        s->cap = new_cap;
-    }
-
-//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
-
-    s->a[s->len++] = value;
-}
-
-size_t __ko_uint8_t_slice_len(__ko_uint8_t_slice s) {
-     return s.len;
-}
-
-uint8_t __ko_uint8_t_slice_get(__ko_uint8_t_slice* s, size_t index) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in get()\n");
-        exit(1);
-    }
-    return s->a[index];
-}
-
-void __ko_uint8_t_slice_set(__ko_uint8_t_slice* s, size_t index, uint8_t value) {
-    if (index >= s->len) {
-        fprintf(stderr, "Index out of bounds in set()\n");
-        exit(1);
-    }
-    s->a[index] = value;
-}
-
 typedef struct __ko_double_slice __ko_double_slice;
 
 struct __ko_double_slice {
@@ -302,9 +219,10 @@ void __ko_double_slice_append(__ko_double_slice* s, double value) {
         s->cap = new_cap;
     }
 
-//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+    s->a[s->len] = value;
+    s->len++;
 
-    s->a[s->len++] = value;
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
 }
 
 size_t __ko_double_slice_len(__ko_double_slice s) {
@@ -320,6 +238,90 @@ double __ko_double_slice_get(__ko_double_slice* s, size_t index) {
 }
 
 void __ko_double_slice_set(__ko_double_slice* s, size_t index, double value) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in set()\n");
+        exit(1);
+    }
+    s->a[index] = value;
+}
+
+typedef struct __ko_uint8_t_slice __ko_uint8_t_slice;
+
+struct __ko_uint8_t_slice {
+    uint8_t* a;
+    size_t len;
+    size_t cap;
+};
+
+// Protos
+__ko_uint8_t_slice __ko_uint8_t_slice_new(size_t capacity);
+__ko_uint8_t_slice __ko_uint8_t_slice_init(const uint8_t* values, size_t count);
+void __ko_uint8_t_slice_free(__ko_uint8_t_slice* s);
+uint8_t __ko_uint8_t_slice_get(__ko_uint8_t_slice* s, size_t index);
+void __ko_uint8_t_slice_set(__ko_uint8_t_slice* s, size_t index, uint8_t value);
+bool __ko___ko_uint8_t_slice_equality(__ko_uint8_t_slice a, __ko_uint8_t_slice b);
+
+void __ko_uint8_t_slice_append(__ko_uint8_t_slice* s, uint8_t value);
+size_t __ko_uint8_t_slice_len(__ko_uint8_t_slice s);
+
+__ko_uint8_t_slice __ko_uint8_t_slice_new(size_t capacity) {
+    __ko_uint8_t_slice s;
+    s.a = (uint8_t*)malloc(capacity * sizeof(uint8_t));
+    s.len = 0;
+    s.cap = capacity;
+    return s;
+}
+__ko_uint8_t_slice __ko_uint8_t_slice_init(const uint8_t* values, size_t count) {
+  __ko_uint8_t_slice s = __ko_uint8_t_slice_new(count);
+  memcpy(s.a, values, sizeof(uint8_t) * count);
+  s.len = count;
+  return s;
+}
+
+bool __ko___ko_uint8_t_slice_equality(__ko_uint8_t_slice a, __ko_uint8_t_slice b) {
+     return (a.a == b.a) && (a.len == b.len) && (a.cap == b.cap);
+}
+
+void __ko_uint8_t_slice_free(__ko_uint8_t_slice* s) {
+    if (s->a != NULL) {
+        free(s->a);
+        s->a = NULL;
+    }
+    s->len = 0;
+    s->cap = 0;
+}
+
+void __ko_uint8_t_slice_append(__ko_uint8_t_slice* s, uint8_t value) {
+    if (s->len >= s->cap) {
+        size_t new_cap = s->cap == 0 ? 4 : s->cap * 2;
+        uint8_t* new_data = (uint8_t*)realloc(s->a, new_cap * sizeof(uint8_t));
+        if (!new_data) {
+            fprintf(stderr, "Out of memory in append()\n");
+            exit(1);
+        }
+        s->a = new_data;
+        s->cap = new_cap;
+    }
+
+    s->a[s->len] = value;
+    s->len++;
+
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+}
+
+size_t __ko_uint8_t_slice_len(__ko_uint8_t_slice s) {
+     return s.len;
+}
+
+uint8_t __ko_uint8_t_slice_get(__ko_uint8_t_slice* s, size_t index) {
+    if (index >= s->len) {
+        fprintf(stderr, "Index out of bounds in get()\n");
+        exit(1);
+    }
+    return s->a[index];
+}
+
+void __ko_uint8_t_slice_set(__ko_uint8_t_slice* s, size_t index, uint8_t value) {
     if (index >= s->len) {
         fprintf(stderr, "Index out of bounds in set()\n");
         exit(1);
@@ -385,9 +387,10 @@ void __ko_int_slice_append(__ko_int_slice* s, int value) {
         s->cap = new_cap;
     }
 
-//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
+    s->a[s->len] = value;
+    s->len++;
 
-    s->a[s->len++] = value;
+//    printf("append: cap: %ld len: %ld val: %d\n", s->cap, s->len, value);
 }
 
 size_t __ko_int_slice_len(__ko_int_slice s) {
@@ -467,7 +470,7 @@ uint8_t addConstant (Chunk* chunk , double value ) {
 #line 48 "./cmd/interp/main.k"
 void disassembleChunk (Chunk* chunk , __ko_string name ) {
 	ko_printf(__ko_string_make("== %s ==\n"), name);
-	for (int offset = 0; (offset < __ko_uint8_t_slice_len(chunk->code)); (offset++)) {
+	for (int offset = 0; (offset < __ko_uint8_t_slice_len(chunk->code)); NULL) {
 		offset = disassembleInstruction(chunk, offset);
 	};
 }
