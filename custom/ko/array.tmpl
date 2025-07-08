@@ -1,0 +1,11 @@
+
+struct {{.Name}} {
+	{{.Type}} a[{{.Size}}];
+};
+
+// Protos
+bool __ko_{{.Name}}_equality({{.Name}} a, {{.Name}} b);
+
+bool __ko_{{.Name}}_equality({{.Name}} a, {{.Name}} b) {
+     return memcmp(a.a, b.a, sizeof({{.Type}}) * {{.Size}}) == 0;
+}

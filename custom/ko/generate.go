@@ -63,11 +63,15 @@ func returnArgsToString(node Node) string {
 //go:embed runtime.h
 var runtimeFile string
 
+//go:embed array.tmpl
+var arrayTemplate string
+
 //go:embed slice.tmpl
 var sliceTemplate string
 type SliceTemplateDef struct {
 	Name string
 	Type string
+	Size int
 }
 
 func (buf *genBuf) Generate(result ParseResult) {
@@ -92,9 +96,15 @@ func (buf *genBuf) Generate(result ParseResult) {
 		add := buf.PrintForwardDecl(node)
 		if add { buf.Add(";").Line() }
 
-		structNode, isStruct := node.(*StructNode)
-		if isStruct {
-			buf.printEqualityPrototype(structNode.Type())
+		// structNode, isStruct := node.(*StructNode)
+		// if isStruct {
+		// 	buf.printEqualityPrototype(structNode.Type())
+		// 	buf.Add(";").Line()
+		// }
+
+		switch t := node.(type) {
+		case *StructNode:
+			buf.printEqualityPrototype(t.Type())
 			buf.Add(";").Line()
 		}
 	}
@@ -189,6 +199,7 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 		buf.Line()
 	case *ArrayType:
 		name := typeNameC(ty)
+		elemName := typeNameC(t.base)
 
 		// Forward Declaration
 		// TODO: Would be good to hoist this all up so nested arrays arent problematic
@@ -196,15 +207,15 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 			Add(name).Add(" ").Add(name)
 		buf.Add(";").Line()
 
-		// Type definition
-		elemName := typeNameC(t.base)
-		buf.Add("struct ").Add(name).Add(" {").Line()
-		buf.indent++
-		buf.Add(elemName).Add(" ").Add("a")
-		buf.Add(fmt.Sprintf("[%d]", t.len))
-		buf.Add(";").Line()
-		buf.indent--
-		buf.Add("};")
+		tmpl := template.Must(template.New("carray").Parse(arrayTemplate))
+		err := tmpl.Execute(buf.buf, SliceTemplateDef{
+			Name: name,
+			Type: elemName,
+			Size: t.len,
+		})
+		if err != nil {
+			panic(err)
+		}
 		buf.Line()
 	}
 }
@@ -714,6 +725,8 @@ func (buf *genBuf) Print(n Node) {
 		} else {
 			buf.Add(t.tok.str)
 		}
+	case *BreakStmt:
+		buf.Add("break;").Line()
 	default:
 		panic(fmt.Sprintf("Print: Unknown NodeType: %T", t))
 	}

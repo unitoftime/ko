@@ -798,6 +798,8 @@ func (r *Resolver) resolveLocal(node Node) Type {
 	case *GenArg:
 		t.ty = r.ResolveTypeNodeExpr(t)
 		return t.ty
+	case *BreakStmt:
+		return UnknownType
 	case *TypeNode:
 		Println("TypeNode:", t)
 		t.ty = r.ResolveTypeNodeExpr(t.node)

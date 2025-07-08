@@ -223,7 +223,7 @@ func compile(inputFile string) {
 }
 
 func pipeCompile() *exec.Cmd {
-	cc := "tcc"
+	cc := "gcc"
 	opt := "-O0"
 	args := []string{
 		"-g",

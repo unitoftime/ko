@@ -271,6 +271,16 @@ func (n *ShortStmt) Type() Type {
 	return UnknownType
 }
 
+type BreakStmt struct {
+	tok Token
+}
+func (n *BreakStmt) Pos() Position {
+	return n.tok.pos
+}
+func (n *BreakStmt) Type() Type {
+	return UnknownType
+}
+
 type IfStmt struct {
 	cond Node
 	thenScope Node
@@ -684,6 +694,9 @@ func (p *Parser) ParseDecl(globalScope bool) Node {
 			printErr(next, fmt.Sprintf("Unexpected identifier in global scope: %s", next.str))
 		}
 		return p.parseStatement()
+	case BREAK:
+		tok := tokens.Consume(BREAK)
+		return &BreakStmt{tok}
 	case MUL:
 		return p.parseStatement()
 	case LBRACE:
