@@ -367,4 +367,5 @@ func TestConstants() {
 func TestCasting() {
 	var x = 5
 	y := u8(x)
+	ko_printf("y: %d", y)
 }

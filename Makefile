@@ -22,7 +22,7 @@ tcc:
 play: rebuild-ko
 	ko run ./cmd/interp/main.k
 
-run: rebuild-ko
+test: rebuild-ko
 	ko run ./tests/test.k
 
 run-1m: rebuild-ko
