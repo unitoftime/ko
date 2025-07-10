@@ -20,7 +20,8 @@ tcc:
 # echo 'int main() { return 0; }' | gcc -x c -o myprog -
 
 play: rebuild-ko
-	ko run ./cmd/interp/main.k
+	ko build ./cmd/interp/main.k
+	./out/run.bin
 
 test: rebuild-ko
 	ko run ./tests/test.k

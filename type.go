@@ -282,6 +282,7 @@ var (
 	IntType = &BasicType{"int", true}
 	Float64Type = &BasicType{"f64", true}
 	StringType = &BasicType{"string", true}
+	StringSliceType = &SliceType{StringType}
 )
 
 var AppendGenericT = &GenericType{"T"}

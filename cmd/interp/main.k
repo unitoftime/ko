@@ -3,6 +3,7 @@ package main
 foreign {
 	func malloc(size usize) *u8
 	func free(ptr *u8)
+	func ko_args() []string // Builtin: Returns arguments from argc, argv
 	// func sizeof[T](T) usize // TODO: bad return type
 }
 
@@ -10,38 +11,63 @@ const DEBUG_TRACE_EXECUTION = true
 const STACK_MAX = 256
 
 func main() {
-	ko_printf("Starting Interpreter\n")
-	// chunk := Chunk{[]u8{}, []f64{}, []int{}}
-	chunk := Chunk{}
-
-	c := addConstant(&chunk, 1.2)
-	writeChunk(&chunk, OpConstant, 123)
-	writeChunk(&chunk, c, 123)
-
-	c = addConstant(&chunk, 3.4)
-	writeChunk(&chunk, OpConstant, 123)
-	writeChunk(&chunk, c, 123)
-
-	writeChunk(&chunk, OpAdd, 123)
-
-	c = addConstant(&chunk, 5.6)
-	writeChunk(&chunk, OpConstant, 123)
-	writeChunk(&chunk, c, 123)
-
-	writeChunk(&chunk, OpDivide, 123)
-	writeChunk(&chunk, OpNegate, 123)
-
-	writeChunk(&chunk, OpReturn, 123)
-
-	// disassembleChunk(&chunk, "test")
+	ko_printf("Starting\n")
 
 	initVM()
 
-	ret := interpret(&chunk)
-	ko_printf("Return Value: %d\n", ret)
+	args := ko_args()
+
+	numArgs := len[string](args)
+	ko_printf("NumArgs: %d\n", numArgs)
+	switch numArgs {
+	case 1:
+		ko_printf("== Repl Mode ==\n")
+
+	case 2:
+		ko_printf("== Interp Mode: %s ==\n", args[1])
+
+	default:
+		ko_printf("Usage: Requires 0 or 1 argument\n")
+		// TODO: os.Exit(64) SetReturn: 64
+		// return 64
+	}
 
 	// TODO: Free chunk, VM, etc
 }
+
+// func main() {
+// 	ko_printf("Starting Interpreter\n")
+// 	// chunk := Chunk{[]u8{}, []f64{}, []int{}}
+// 	chunk := Chunk{}
+
+// 	c := addConstant(&chunk, 1.2)
+// 	writeChunk(&chunk, OpConstant, 123)
+// 	writeChunk(&chunk, c, 123)
+
+// 	c = addConstant(&chunk, 3.4)
+// 	writeChunk(&chunk, OpConstant, 123)
+// 	writeChunk(&chunk, c, 123)
+
+// 	writeChunk(&chunk, OpAdd, 123)
+
+// 	c = addConstant(&chunk, 5.6)
+// 	writeChunk(&chunk, OpConstant, 123)
+// 	writeChunk(&chunk, c, 123)
+
+// 	writeChunk(&chunk, OpDivide, 123)
+// 	writeChunk(&chunk, OpNegate, 123)
+
+// 	writeChunk(&chunk, OpReturn, 123)
+
+// 	// disassembleChunk(&chunk, "test")
+
+// 	initVM()
+
+// 	ret := interpret(&chunk)
+// 	ko_printf("Return Value: %d\n", ret)
+
+// 	// TODO: Free chunk, VM, etc
+// }
 
 var vm VirtualMachine
 func initVM() {

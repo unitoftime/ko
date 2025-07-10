@@ -230,6 +230,8 @@ func NewResolver() *Resolver {
 
 	builtin.AddIdent("f64", &BuiltinNode{getType(Float64Type)})
 	builtin.AddIdent("string", &BuiltinNode{getType(StringType)})
+	builtin.AddIdent("[]string", &BuiltinNode{getType(StringSliceType)}) // Required for args.h
+
 
 	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("uintptr", &BuiltinNode{getType(IntType)})

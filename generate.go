@@ -178,16 +178,19 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 func (buf *genBuf) PrintFuncDef(t *FuncNode) {
 	isMain := t.name == "main"
-	retArgs := "int" // Note: Default main return type
-	if !isMain {
-		retArgs = returnArgsToString(t.returns)
+	if isMain {
+		buf.Add("#include \"args.h\"").Line()
+		buf.Add("int main(int argc, const char* argv[])")
+	} else {
+		retArgs := returnArgsToString(t.returns)
+
+		buf.Add(retArgs).
+			Add(" ").
+			Add(t.name).
+			Add(" (")
+		buf.Print(t.arguments)
+		buf.Add(")")
 	}
-	buf.Add(retArgs).
-		Add(" ").
-		Add(t.name).
-		Add(" (")
-	buf.Print(t.arguments)
-	buf.Add(")")
 }
 
 func (buf *genBuf) PrintGeneratedType(ty Type) {
@@ -254,6 +257,7 @@ func (buf *genBuf) PrintForwardDecl(n Node) bool {
 	case *FuncNode:
 		if t.body == nil { return false }
 		if t.Generic() { return false } // TODO: Eventually handle these
+		if t.name == "main" { return false }
 
 		buf.LineDirective(t.pos)
 		buf.PrintFuncDef(t)
@@ -557,11 +561,16 @@ func (buf *genBuf) Print(n Node) {
 		buf.PrintFuncDef(t)
 		buf.Add(" {").Line()
 
+		if t.name == "main" {
+			// Handle argc/argv
+			buf.Add("\t").Add("__ko_init_args(argc, argv);").Line()
+		}
+
 		buf.Print(t.body)
 
 		// Print Return
 		if t.name == "main" {
-			buf.Add("return __mainRet__;").Line()
+			buf.Add("\t").Add("return __mainRet__;").Line()
 		}
 		buf.Add("}").Line()
 	case *Stmt:
