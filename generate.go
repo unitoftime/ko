@@ -13,10 +13,12 @@ type genBuf struct {
 	buf io.Writer
 	indent int
 	newline bool
+	lineHasContent bool
 }
 func (b *genBuf) Add(str string) *genBuf {
 	if b.newline {
 		b.newline = false
+		b.lineHasContent = true
 		for range b.indent {
 			io.WriteString(b.buf, "\t")
 		}
@@ -26,9 +28,17 @@ func (b *genBuf) Add(str string) *genBuf {
 	return b
 }
 
+func (b *genBuf) SemiLine() *genBuf {
+	if b.lineHasContent {
+		b.Add(";").Line()
+	}
+	return b
+}
+
 func (b *genBuf) Line() *genBuf {
 	b.Add("\n")
 	b.newline = true
+	b.lineHasContent = false
 	return b
 }
 func (b *genBuf) LineDirective(pos Position) *genBuf {
@@ -93,8 +103,8 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 	// Forward Declare all types
 	for _, node := range result.typeList {
-		add := buf.PrintForwardDecl(node)
-		if add { buf.Add(";").Line() }
+		buf.PrintForwardDecl(node)
+		buf.SemiLine()
 
 		// structNode, isStruct := node.(*StructNode)
 		// if isStruct {
@@ -105,7 +115,7 @@ func (buf *genBuf) Generate(result ParseResult) {
 		switch t := node.(type) {
 		case *StructNode:
 			buf.printEqualityPrototype(t.Type())
-			buf.Add(";").Line()
+			buf.SemiLine()
 		}
 	}
 
@@ -131,36 +141,36 @@ func (buf *genBuf) Generate(result ParseResult) {
 
 	// Forward Declare all functions
 	for i := range result.fnList {
-		add := buf.PrintForwardDecl(result.fnList[i])
-		if add { buf.Add(";").Line() }
+		buf.PrintForwardDecl(result.fnList[i])
+		buf.SemiLine()
+
 	}
 	for i := range result.genericInstantiations {
 		buf.PrintGenericForwardDecl(result.genericInstantiations[i])
-		buf.Add(";").Line()
+		buf.SemiLine()
 	}
 
 
 	// Complete all types
 	for _, node := range result.typeList {
 		buf.PrintCompleteType(node)
-		buf.Add(";").Line()
+		buf.SemiLine()
 
 		structNode, isStruct := node.(*StructNode)
 		if isStruct {
 			buf.printStructEqualityFunction(structNode)
 		}
 	}
+
 	for i := range result.genericInstantiations {
 		buf.PrintCompleteGenericType(result.genericInstantiations[i])
-		buf.Add(";").Line()
 	}
-
 
 	// Declare all global variables
 	for i := range result.varList {
 		buf.LineDirective(result.varList[i].name.pos)
-		add := buf.PrintForwardDecl(result.varList[i])
-		if add { buf.Add(";").Line() }
+		buf.PrintForwardDecl(result.varList[i])
+		buf.SemiLine()
 	}
 
 	buf.Print(result.file)
@@ -187,7 +197,7 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 		elemName := typeNameC(t.base)
 
 		buf.PrintStructForwardDecl(name)
-		buf.Add(";").Line()
+		buf.SemiLine()
 		tmpl := template.Must(template.New("cslice").Parse(sliceTemplate))
 		err := tmpl.Execute(buf.buf, SliceTemplateDef{
 			Name: name,
@@ -205,7 +215,7 @@ func (buf *genBuf) PrintGeneratedType(ty Type) {
 		// TODO: Would be good to hoist this all up so nested arrays arent problematic
 		buf.Add("typedef struct ").
 			Add(name).Add(" ").Add(name)
-		buf.Add(";").Line()
+		buf.SemiLine()
 
 		tmpl := template.Must(template.New("carray").Parse(arrayTemplate))
 		err := tmpl.Execute(buf.buf, SliceTemplateDef{
@@ -538,7 +548,7 @@ func (buf *genBuf) Print(n Node) {
 			buf.Add("typedef ")
 			buf.PrintStructNode(t)
 			buf.Add(" ").Add(t.ident.str)
-			buf.Add(";").Line()
+			buf.SemiLine()
 		}
 	case *FuncNode:
 		if t.Generic() { return } // TODO: Eventually handle these
@@ -574,7 +584,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.Print(t.body)
 		buf.Add("}")
 	case *VarStmt:
-		if !t.global {
+		if !t.global && !t.constant {
 			Println("VarStmt:", *t)
 			buf.PrintVarDecl(t.name.str, t.Type(), t.initExpr)
 		}
@@ -643,7 +653,7 @@ func (buf *genBuf) Print(n Node) {
 		buf.indent++
 		for i := range t.nodes {
 			buf.Print(t.nodes[i])
-			buf.Add(";").Line()
+			buf.SemiLine()
 		}
 		buf.indent--
 
