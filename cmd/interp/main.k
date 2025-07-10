@@ -15,9 +15,22 @@ func main() {
 	chunk := Chunk{}
 
 	c := addConstant(&chunk, 1.2)
-
 	writeChunk(&chunk, OpConstant, 123)
 	writeChunk(&chunk, c, 123)
+
+	c = addConstant(&chunk, 3.4)
+	writeChunk(&chunk, OpConstant, 123)
+	writeChunk(&chunk, c, 123)
+
+	writeChunk(&chunk, OpAdd, 123)
+
+	c = addConstant(&chunk, 5.6)
+	writeChunk(&chunk, OpConstant, 123)
+	writeChunk(&chunk, c, 123)
+
+	writeChunk(&chunk, OpDivide, 123)
+	writeChunk(&chunk, OpNegate, 123)
+
 	writeChunk(&chunk, OpReturn, 123)
 
 	// disassembleChunk(&chunk, "test")
@@ -74,6 +87,15 @@ func readConst() f64 {
 	return vm.chunk.values[int(readByte())]
 }
 
+// type Opcode enum
+const OpReturn = 0
+const OpConstant = 1
+const OpNegate = 2
+const OpAdd = 3
+const OpSubtract = 4
+const OpMultiply = 5
+const OpDivide = 6
+
 func run() int {
 	for ;;; {
 		if DEBUG_TRACE_EXECUTION {
@@ -97,6 +119,29 @@ func run() int {
 			constant := readConst()
 			push(constant)
 
+		case OpNegate:
+			push(-pop())
+
+		case OpAdd:
+			b := pop()
+			a := pop()
+			push(a + b)
+
+		case OpSubtract:
+			b := pop()
+			a := pop()
+			push(a - b)
+
+		case OpMultiply:
+			b := pop()
+			a := pop()
+			push(a * b)
+
+		case OpDivide:
+			b := pop()
+			a := pop()
+			push(a / b)
+
 		case OpReturn:
 			ko_printf("POP: ")
 			printValue(pop())
@@ -105,10 +150,6 @@ func run() int {
 		}
 	}
 }
-
-// type Opcode enum
-const OpReturn = 0
-const OpConstant = 1
 
 // TODO: Union for values array
 type Chunk struct {
@@ -155,6 +196,16 @@ func disassembleInstruction(chunk *Chunk, offset int) int {
 		return simpleInstruction("OP_RETURN", offset)
 	case OpConstant:
 		return constantInstruction("OP_CONSTANT", chunk, offset)
+	case OpNegate:
+		return simpleInstruction("OP_NEGATE", offset)
+	case OpAdd:
+		return simpleInstruction("OP_ADD", offset)
+	case OpSubtract:
+		return simpleInstruction("OP_SUBTRACT", offset)
+	case OpMultiply:
+		return simpleInstruction("OP_MULTIPLY", offset)
+	case OpDivide:
+		return simpleInstruction("OP_DIVIDE", offset)
 	default:
 		ko_printf("Unknown opCode; %d\n", inst)
 		return offset + 1

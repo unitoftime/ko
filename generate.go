@@ -619,16 +619,17 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add("}")
 	case *CaseStmt:
 		if t.expr == nil {
-			buf.Add("default:").Line()
+			buf.Add("default: {").Line()
 		} else {
 			buf.Add("case ")
 			buf.Print(t.expr)
-			buf.Add(":")
+			buf.Add(": {")
 			buf.Line()
 		}
 
 		buf.Print(t.body)
-		buf.Add("break;")
+		buf.Add("\t").Add("break;")
+		buf.Line().Add("}")
 		buf.Line()
 
 	case *ArgNode:
