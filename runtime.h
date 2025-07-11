@@ -26,6 +26,7 @@ __ko_string __ko_string_slice(__ko_string s, size_t low, size_t high);
 bool __ko_string_cmp(__ko_string a, __ko_string b);
 void __ko_string_free(__ko_string s);
 void ko_printf(__ko_string format, ...);
+char* ko_cstr(__ko_string s);
 
 __ko_string __ko_string_make(const char* cstr) {
   size_t len = strlen(cstr);
@@ -71,9 +72,7 @@ void ko_printf(__ko_string format, ...) {
       }
       case 's': {
         __ko_string s = va_arg(args, __ko_string);
-        char* tmp = malloc(s.len + 1);
-        memcpy(tmp, s.data, s.len);
-        tmp[s.len] = '\0';
+        char* tmp = ko_cstr(s);
         fputs(tmp, stdout);
         free(tmp);
         break;
@@ -105,5 +104,14 @@ void ko_printf(__ko_string format, ...) {
   }
 
   va_end(args); // Clean up va_list
+}
+
+char* ko_cstr(__ko_string s) {
+  printf("MALLOC: %lu\n", s.len + 1);
+
+  char* tmp = malloc(s.len + 1);
+  memcpy(tmp, s.data, s.len);
+  tmp[s.len] = '\0';
+  return tmp;
 }
 

@@ -60,6 +60,7 @@ const (
 	INT
 	FLOAT
 	STRING
+	CHARLIT
 	LINECOMMENT
 
   // Keywords.
@@ -128,6 +129,8 @@ var tokens = []string{
 	INT:     "INT",
 	FLOAT:     "FLOAT",
 	STRING:     "STRING",
+	CHARLIT:     "CHARLIT",
+
 	LINECOMMENT: "LINECOMMENT",
 
 
@@ -218,7 +221,7 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 		switch r {
 		case '\n':
 			// Decide if we want to add semicolon
-			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == RBRACK || l.lastToken == INT || l.lastToken == FLOAT || l.lastToken == INC || l.lastToken == DEC || l.lastToken == STRING || l.lastToken == TRUE || l.lastToken == FALSE {
+			if l.lastToken == IDENT || l.lastToken == RPAREN || l.lastToken == RBRACE || l.lastToken == RBRACK || l.lastToken == INT || l.lastToken == FLOAT || l.lastToken == INC || l.lastToken == DEC || l.lastToken == STRING || l.lastToken == CHARLIT || l.lastToken == TRUE || l.lastToken == FALSE {
 				l.lastToken = SEMI
 				l.resetPosition()
 				return l.pos, SEMI, ";"
@@ -350,10 +353,16 @@ func (l *Lexer) Lex() (Position, TokenType, string) {
 			//--------------------------------------------------------------------------------
 		case '"':
 			startPos := l.pos
-			// l.backup()
-			lit := l.lexString()
+
+			lit := l.lexString('"')
 			l.lastToken = STRING
 			return startPos, STRING, lit
+		case '\'':
+			startPos := l.pos
+
+			lit := l.lexString('\'')
+			l.lastToken = CHARLIT
+			return startPos, CHARLIT, lit
 		default:
 			if unicode.IsSpace(r) {
 				continue // nothing to do here, just move on
@@ -452,8 +461,8 @@ func (l *Lexer) lexIdent() string {
 	}
 }
 
-func (l *Lexer) lexString() string {
-	var lit = "\""
+func (l *Lexer) lexString(border rune) string {
+	var lit = string(border)
 	for {
 		r, _, err := l.reader.ReadRune()
 		if err != nil {
@@ -469,7 +478,7 @@ func (l *Lexer) lexString() string {
 			l.resetPosition()
 		}
 
-		if r == '"' {
+		if r == border {
 			// end string
 			lit = lit + string(r)
 			return lit

@@ -152,6 +152,8 @@ func tryCast(a, b Type) bool {
 
 	switch aa := a.(type) {
 	case *PointerType:
+		if b == PointerLitType { return true }
+
 		bb, ok := b.(*PointerType)
 		if !ok { return false }
 
@@ -179,6 +181,10 @@ func tryBasicTypeCast(a, b *BasicType) bool {
 		_, ok := floatLitCast[b.name]
 		// Println("FloatLitCast:", a, b, ok)
 		return ok
+	case RuneLitType:
+		_, ok := runeLitCast[b.name]
+		// Println("FloatLitCast:", a, b, ok)
+		return ok
 	}
 
 	return false
@@ -197,6 +203,11 @@ func castToInt(n Node) (int, bool) {
 		panic(fmt.Sprintf("ResolveToConstInt: Unknown NodeType: %T", t))
 	}
 	return 0, false
+}
+
+// List of all the types that an untypedRune can cast to
+var runeLitCast = map[string]bool {
+	"char": true,
 }
 
 // List of all the types that an untypedInt can cast to
@@ -263,6 +274,7 @@ var floatLitCast = map[string]bool {
 const IntLitName = "untypedInt"
 const FloatLitName = "untypedFloat"
 const StringLitName = "untypedString"
+const RuneLitName = "untypedRune"
 const BoolLitName = "untypedBool"
 const UntypedPointerName = "untypedPtr"
 
@@ -276,6 +288,7 @@ var (
 	IntLitType = &BasicType{IntLitName, true}
 	FloatLitType = &BasicType{FloatLitName, true}
 	StringLitType = &BasicType{StringLitName, true}
+	RuneLitType = &BasicType{RuneLitName, true}
 	PointerLitType = &BasicType{UntypedPointerName, true}
 
 	BoolType = &BasicType{"bool", true}
@@ -283,6 +296,7 @@ var (
 	Float64Type = &BasicType{"f64", true}
 	StringType = &BasicType{"string", true}
 	StringSliceType = &SliceType{StringType}
+	CharType = &BasicType{"char", true}
 )
 
 var AppendGenericT = &GenericType{"T"}
@@ -303,6 +317,25 @@ var AppendBuiltinType = &FuncType{
 	},
 	returns: VoidType,
 }
+
+var MakeGenericT = &GenericType{"T"}
+var MakeBuiltinType = &FuncType{
+	name: "make",
+
+	// args: []Type{
+	// 	getType(&SliceType{getType(IntType)}),
+	// 	getType(IntType), // TODO: Variadic
+	// },
+	// returns: VoidType,
+	// // returns: getType(&SliceType{getType(IntType)}),
+
+	generics: []Type{MakeGenericT},
+	args: []Type{
+		getType(IntType),
+	},
+	returns: MakeGenericT,
+}
+
 var LenBuiltinType = &FuncType{
 	name: "len",
 	generics: []Type{AppendGenericT},
@@ -310,6 +343,17 @@ var LenBuiltinType = &FuncType{
 		AppendGenericT,
 	},
 	returns: getType(IntType),
+}
+
+var SliceBuiltinType = &FuncType{
+	name: "slice",
+	generics: []Type{AppendGenericT},
+	args: []Type{
+		&SliceType{AppendGenericT},
+		getType(IntType),
+		getType(IntType),
+	},
+	returns: VoidType,
 }
 
 

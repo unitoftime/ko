@@ -23,6 +23,10 @@ play: rebuild-ko
 	ko build ./cmd/interp/main.k
 	./out/run.bin
 
+interp: rebuild-ko
+	ko build ./cmd/interp/main.k
+	./out/run.bin test.txt
+
 test: rebuild-ko
 	ko run ./tests/test.k
 

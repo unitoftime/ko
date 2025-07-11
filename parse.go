@@ -86,6 +86,7 @@ func (n *FuncNode) ToConcrete(t *FuncType) *FuncNode {
 
 type StructNode struct {
 	global bool
+	foreign bool
 	ident Token
 	fields []*Arg
 	ty Type
@@ -245,6 +246,7 @@ func (n *TypeNode) Type() Type {
 type VarStmt struct {
 	name Token
 	global bool
+	foreign bool
 	constant bool
 	typeSpec Node
 	initExpr Node
@@ -596,6 +598,7 @@ func (p *Parser) ParseFile(name string) *FileNode {
 type Parser struct {
 	tokens *Tokens
 	blockCompLit bool // If true, we are parsing something like an if or a for with {...} somewhere, so we cant allow composit lits, here
+	foreignScope bool
 	typeList []Node // A list of every registered type
 	fnList []*FuncNode // A list of every registered function
 	varList []*VarStmt // list of every global variable
@@ -760,6 +763,7 @@ func (p *Parser) TypeDeclNode(globalScope bool) Node {
 
 		s := &StructNode{
 			global: globalScope,
+			foreign: p.foreignScope,
 			ident: ident,
 			fields: fields,
 		}
@@ -841,6 +845,9 @@ func (p *Parser) ParseFuncNode(globalScope bool) Node {
 
 func (p *Parser) ParseForeignBlock(globalScope bool) Node {
 	foreign := p.Next()
+	p.foreignScope = true
+	defer func() { p.foreignScope = false }()
+
 	body := p.ParseCurlyScope(globalScope)
 	return &ForeignScope{
 		tok: foreign,
@@ -1033,7 +1040,7 @@ func (p *Parser) varDecl(globalScope bool) *VarStmt {
 	Println(initExpr)
 
 	p.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, false, typeSpec, initExpr, UnknownType, nil}
+	stmt := &VarStmt{name, globalScope, p.foreignScope, false, typeSpec, initExpr, UnknownType, nil}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -1064,7 +1071,7 @@ func (p *Parser) constDecl(globalScope bool) *VarStmt {
 	Println(initExpr)
 
 	p.Consume(SEMI)
-	stmt := &VarStmt{name, globalScope, true, typeSpec, initExpr, UnknownType, nil}
+	stmt := &VarStmt{name, globalScope, p.foreignScope, true, typeSpec, initExpr, UnknownType, nil}
 
 	if globalScope {
 		p.varList = append(p.varList, stmt)
@@ -1450,6 +1457,9 @@ func (p *Parser) ParseExprPrimary(tokens *Tokens) Node {
 	case STRING:
 		tok := tokens.Next()
 		return &LitExpr{tok, STRING, StringLitType}
+	case CHARLIT:
+		tok := tokens.Next()
+		return &LitExpr{tok, CHARLIT, RuneLitType}
 	case LPAREN:
 		tokens.Consume(LPAREN)
 		// TODO: Shoudl this be Or?

@@ -214,7 +214,9 @@ func NewResolver() *Resolver {
 	// builtin.AddIdent("sizeof", &BuiltinNode{getType(&BasicType{"size_t", false})})
 
 	builtin.AddIdent("append", &BuiltinNode{AppendBuiltinType})
+	builtin.AddIdent("make", &BuiltinNode{MakeBuiltinType})
 	builtin.AddIdent("len", &BuiltinNode{LenBuiltinType})
+	builtin.AddIdent("slice", &BuiltinNode{SliceBuiltinType})
 
 	// Add builtin types
 	builtin.AddIdent("nil", &BuiltinNode{PointerLitType})
@@ -236,6 +238,9 @@ func NewResolver() *Resolver {
 	builtin.AddIdent("int", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("uintptr", &BuiltinNode{getType(IntType)})
 	builtin.AddIdent("usize", &BuiltinNode{getType(IntType)})
+
+	// C Types
+	builtin.AddIdent("char", &BuiltinNode{getType(CharType)})
 
 
 	return &Resolver{
@@ -615,6 +620,11 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			// TODO: Validate there is only one thing passed into cast operation
 			t.ty = tt
 			return t.ty
+		case *PointerType:
+			// TODO: validate typecast argument can cast to output type
+			// TODO: Validate there is only one thing passed into cast operation
+			t.ty = tt
+			return t.ty
 		default:
 			nodeError(t, fmt.Sprintf("Unexpected call expressions type: %T", tt))
 		}
@@ -731,12 +741,17 @@ func (r *Resolver) resolveLocal(node Node) Type {
 
 		switch t.op.token {
 		case MUL:
-			// Dereferencing a pointer
-			ptr, ok := t.ty.(*PointerType)
-			if !ok {
-				nodeError(t, "must be a pointer to dereference")
+			switch ptr := t.ty.(type) {
+			case *PointerType:
+				// If it is a pointer type, then we are dereferencing
+				t.ty = ptr.base
+			case *BasicType:
+				// If it is a basic type, then we are defining a typeNode
+				t.ty = getType(&PointerType{ptr})
+			default:
+				nodeError(t, fmt.Sprintf("must be a pointer to dereference: %T", ptr))
 			}
-			t.ty = ptr.base
+
 		case AND:
 			// getting an address of an object
 			// TODO: Check t.ty must be addressable
@@ -776,6 +791,10 @@ func (r *Resolver) resolveLocal(node Node) Type {
 			r.resolveLocal(t.args[i])
 		}
 		Println("CompLitExpr.Typed:", t.ty)
+		return t.ty
+
+	case *ArrayNode:
+		t.ty = r.ResolveTypeNodeExpr(t)
 		return t.ty
 
 	case *GroupingExpr:

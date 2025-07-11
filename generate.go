@@ -30,8 +30,9 @@ func (b *genBuf) Add(str string) *genBuf {
 
 func (b *genBuf) SemiLine() *genBuf {
 	if b.lineHasContent {
-		b.Add(";").Line()
+		b.Add(";")
 	}
+	b.Line()
 	return b
 }
 
@@ -240,8 +241,10 @@ func (buf *genBuf) PrintStructForwardDecl(name string) {
 func (buf *genBuf) PrintForwardDecl(n Node) bool {
 	switch t := n.(type) {
 	case *StructNode:
+		if t.foreign { return false }
 		buf.PrintStructForwardDecl(t.ident.str)
 	case *VarStmt:
+		if t.foreign { return false }
 		typeStr := typeNameC(t.ty)
 		buf.
 			Add(typeStr).
@@ -308,6 +311,8 @@ func (buf *genBuf) PrintCompleteGenericType(g GenericInstance) {
 func (buf *genBuf) PrintCompleteType(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
+		if t.foreign { return }
+
 		buf.PrintStructNode(t)
 	default:
 		panic(fmt.Sprintf("PrintForwardDecl: Unknown NodeType: %T", t))
@@ -322,6 +327,13 @@ func (buf *genBuf) PrintCallExpr(ce *CallExpr) {
 		buf.PrintArgList(ce.args)
 		buf.Add(")")
 	case *BasicType:
+		buf.Add("(")
+		buf.Add(typeNameC(t))
+		buf.Add(")")
+		buf.Add("(")
+		buf.PrintArgList(ce.args)
+		buf.Add(")")
+	case *PointerType:
 		buf.Add("(")
 		buf.Add(typeNameC(t))
 		buf.Add(")")
@@ -501,10 +513,18 @@ func (buf *genBuf) PrintIndexExpr(t *IndexExpr) {
 			buf.Add("__ko_").
 				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
 				Add("_slice_append")
+		} else if tt.name == "slice" {
+			buf.
+				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
+				Add("_slice")
 		} else if tt.name == "len" {
 			buf.Add("__ko_").
 				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
 				Add("_slice_len")
+		} else if tt.name == "make" {
+			buf.
+				Add(typeNameC(tt.generics[0])). // TODO: a bit hacky
+				Add("_new")
 		} else {
 			buf.Add(t.Type().Name())
 		}
@@ -693,9 +713,9 @@ func (buf *genBuf) Print(n Node) {
 		buf.Add(t.op.str)
 		buf.Add(")")
 	case *UnaryExpr:
-		buf.Add("(").Add(t.op.str)
+		buf.Add("(").Add(t.op.str).Add("(")
 		buf.Print(t.right)
-		buf.Add(")")
+		buf.Add("))")
 	case *AssignExpr:
 		buf.Print(t.name)
 		buf.Add(" = ")
@@ -785,6 +805,8 @@ func (buf *genBuf) printEqualityPrototype(ty Type)  {
 
 }
 func (buf *genBuf) printStructEqualityFunction(t *StructNode) {
+	if t.foreign { return }
+
 	ty := t.Type()
 	buf.printEqualityPrototype(ty)
 	buf.Add("{").Line()

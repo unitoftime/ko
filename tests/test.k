@@ -263,11 +263,16 @@ func TestArrays() {
 
 func TestSlice() {
 	var mySlice = []int{1, 2, 3}
+
+	idxTwo := &mySlice[2]
+
 	mySlice[2] = 33
 	Assert(mySlice[0] == 1)
 	Assert(mySlice[1] == 2)
 	Assert(mySlice[2] == 33)
 	Assert(len[int](mySlice) == 3)
+
+	Assert(*idxTwo == 33)
 
 	append[int](&mySlice, 44)
 	Assert(mySlice[3] == 44)

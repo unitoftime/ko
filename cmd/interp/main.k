@@ -1,10 +1,28 @@
 package main
 
 foreign {
+	func exit(status int)
+
+	type FILE struct {}
+	var stdin *FILE
+	// char *fgets(char *str, int n, FILE *stream);
+	func fgets(str *char, n int, stream *FILE) *char
+	func fopen(filename *char, mode *char) *FILE
+
+	var SEEK_END int
+	func fseek(stream *FILE, offset i64, whence int)
+	func ftell(stream *FILE) i64
+	func rewind(stream *FILE)
+	func fread(ptr *u8, size usize, nitems usize, stream *FILE) usize
+
+	// Upon successful completion, fclose() returns 0. Otherwise, it returns EOF and sets errno to indicate the error.
+	func fclose(stream *FILE) int
+
 	func malloc(size usize) *u8
 	func free(ptr *u8)
 	func ko_args() []string // Builtin: Returns arguments from argc, argv
-	// func sizeof[T](T) usize // TODO: bad return type
+	func ko_cstr(s string) *char
+	func sizeof[T](val T) usize // TODO: bad return type
 }
 
 const DEBUG_TRACE_EXECUTION = true
@@ -22,17 +40,95 @@ func main() {
 	switch numArgs {
 	case 1:
 		ko_printf("== Repl Mode ==\n")
-
+		repl()
 	case 2:
 		ko_printf("== Interp Mode: %s ==\n", args[1])
-
+		runFile(args[1])
 	default:
 		ko_printf("Usage: Requires 0 or 1 argument\n")
+		exit(64)
 		// TODO: os.Exit(64) SetReturn: 64
-		// return 64
 	}
 
 	// TODO: Free chunk, VM, etc
+}
+
+func repl() {
+	lineLen := 1024
+	line := make[[]char](lineLen)
+	// lineLen := int(sizeof(line[0]))
+	for ;;; {
+		ko_printf("> ")
+
+		val := fgets(&line[0], lineLen, stdin)
+		if val == nil {
+			ko_printf("\n")
+			break
+		}
+
+		slicedLine := line
+		for i := 0; i < lineLen; i++ {
+			if slicedLine[i] == '\0' {
+				slice[[]char](&slicedLine, 0, i)
+				break
+			}
+		}
+
+		interpret(slicedLine)
+	}
+
+	// TODO: defer free of line slice
+}
+
+func runFile(path string) {
+	ko_printf("runFile: %s\n", path)
+	source := readFile(path)
+	result := interpret(source)
+	// free(source)
+
+	if result == InterpretCompileError {
+		exit(65)
+	}
+	if result == InterpretRuntimeError {
+		exit(70)
+	}
+}
+
+func readFile(path string) []char {
+	ko_printf("readFile: %s\n", path)
+	// Get File Size
+  file := fopen(ko_cstr(path), ko_cstr("rb"))
+	if file == nil {
+		ko_printf("Could not open file %s", path)
+		exit(74)
+	}
+
+  fseek(file, 0, SEEK_END)
+  fileSize := ftell(file)
+  rewind(file)
+
+	ko_printf("filesSize: %d\n", fileSize)
+
+	// Read the file to a buffer
+	var char_size char
+	sizeof_char := sizeof(char_size)
+
+	// buffer := make([]char, fileSize + 1)
+	buffer := make[[]char](fileSize + 1)
+	ko_printf("buffer: %d\n", len[char](buffer))
+
+  bytesRead := fread(&buffer[0], sizeof_char, fileSize, file)
+  if i64(bytesRead) < fileSize {
+    ko_printf("Could not read file %s.\n", path);
+    exit(74)
+  }
+
+	ko_printf("bytesRead.1: %d\n", bytesRead)
+
+	buffer[bytesRead] = '\0';
+
+	fclose(file)
+	return buffer
 }
 
 // func main() {
@@ -98,11 +194,18 @@ const InterpretOk = 0
 const InterpretCompileError = 1
 const InterpretRuntimeError = 2
 
-func interpret(chunk *Chunk) int {
-	vm.chunk = chunk
-	vm.ip = &vm.chunk.code[0]
-	return run()
+func interpret(source []char) int {
+	ko_printf("\nINTERPRET: %d\n", len[char](source))
+	// Lex, comple, run
+	return InterpretOk
 }
+
+// Old Interpret for hand assembled chunks
+// func interpret(chunk *Chunk) int {
+// 	vm.chunk = chunk
+// 	vm.ip = &vm.chunk.code[0]
+// 	return run()
+// }
 
 func readByte() u8 {
 	b := *vm.ip
