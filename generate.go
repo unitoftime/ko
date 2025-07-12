@@ -44,7 +44,7 @@ func (b *genBuf) Line() *genBuf {
 }
 func (b *genBuf) LineDirective(pos Position) *genBuf {
 	// #line 31 "test.txt"
-	b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
+	// b.Add(fmt.Sprintf("#line %d \"%s\"", pos.line, pos.filename))
 	b.Line()
 
 	return b
@@ -144,7 +144,6 @@ func (buf *genBuf) Generate(result ParseResult) {
 	for i := range result.fnList {
 		buf.PrintForwardDecl(result.fnList[i])
 		buf.SemiLine()
-
 	}
 	for i := range result.genericInstantiations {
 		buf.PrintGenericForwardDecl(result.genericInstantiations[i])
@@ -238,11 +237,19 @@ func (buf *genBuf) PrintStructForwardDecl(name string) {
 	buf.Add("typedef struct ").Add(name).Add(" ").Add(name)
 }
 
+func (buf *genBuf) PrintEnumForwardDecl(name string) {
+	// TODO: enum type/size from node contents
+	buf.Add("typedef uint8_t ").Add(name)
+}
+
 func (buf *genBuf) PrintForwardDecl(n Node) bool {
 	switch t := n.(type) {
 	case *StructNode:
 		if t.foreign { return false }
 		buf.PrintStructForwardDecl(t.ident.str)
+	case *EnumNode:
+		if t.foreign { return false }
+		buf.PrintEnumForwardDecl(t.ident.str) // TODO
 	case *VarStmt:
 		if t.foreign { return false }
 		typeStr := typeNameC(t.ty)
@@ -312,8 +319,10 @@ func (buf *genBuf) PrintCompleteType(n Node) {
 	switch t := n.(type) {
 	case *StructNode:
 		if t.foreign { return }
-
 		buf.PrintStructNode(t)
+	case *EnumNode:
+		if t.foreign { return }
+		buf.PrintEnumNode(t)
 	default:
 		panic(fmt.Sprintf("PrintForwardDecl: Unknown NodeType: %T", t))
 	}
@@ -472,6 +481,21 @@ func (buf *genBuf) PrintCompLit(c *CompLitExpr) {
 	}
 }
 
+func (buf *genBuf) PrintEnumNode(t *EnumNode) {
+	buf.Add("enum ").
+		Add(t.ident.str).
+		Add(" {")
+	for i := range t.fields {
+		// TODO: Might need to handle fields with set values
+		buf.Add(t.fields[i].str)
+
+		if i < len(t.fields)-1 {
+			buf.Add(", ")
+		}
+	}
+	buf.Add("}").SemiLine()
+}
+
 func (buf *genBuf) PrintStructNode(t *StructNode) {
 	buf.Add("struct ").
 		Add(t.ident.str).
@@ -573,6 +597,10 @@ func (buf *genBuf) Print(n Node) {
 			buf.PrintStructNode(t)
 			buf.Add(" ").Add(t.ident.str)
 			buf.SemiLine()
+		}
+	case *EnumNode:
+		if !t.global {
+			buf.PrintEnumNode(t)
 		}
 	case *FuncNode:
 		if t.Generic() { return } // TODO: Eventually handle these

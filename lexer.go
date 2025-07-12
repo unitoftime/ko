@@ -82,7 +82,8 @@ const (
 	CASE
 	BREAK
 	DEFAULT
-  // PRINT, THIS, WHILE,
+	ENUM
+  // PRINT, THIS
 )
 
 var tokens = []string{
@@ -153,6 +154,7 @@ var tokens = []string{
 	CASE: "case",
 	BREAK: "break",
 	DEFAULT: "default",
+	ENUM: "enum",
 }
 var keywordList = map[string]TokenType{
 	tokens[PACKAGE]: PACKAGE,
@@ -173,6 +175,7 @@ var keywordList = map[string]TokenType{
 	tokens[CASE]: CASE,
 	tokens[BREAK]: BREAK,
 	tokens[DEFAULT]: DEFAULT,
+	tokens[ENUM]: ENUM,
 }
 
 func (t TokenType) String() string {

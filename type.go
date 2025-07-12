@@ -39,6 +39,18 @@ func (t *StructType) Name() string {
 	return t.name
 }
 
+type EnumType struct {
+	name string
+	fields []string
+}
+
+func (t *EnumType) Underlying() Type {
+	return t
+}
+func (t *EnumType) Name() string {
+	return t.name
+}
+
 type FuncType struct {
 	name string
 	generics []Type

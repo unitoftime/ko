@@ -98,6 +98,20 @@ func (n *StructNode) Type() Type {
 	return n.ty
 }
 
+type EnumNode struct {
+	global bool
+	foreign bool
+	ident Token
+	fields []Token
+	ty Type
+}
+func (n *EnumNode) Pos() Position {
+	return Position{}
+}
+func (n *EnumNode) Type() Type {
+	return n.ty
+}
+
 type ForeignScope struct {
 	tok Token
 	body *CurlyScope
@@ -762,6 +776,29 @@ func (p *Parser) TypeDeclNode(globalScope bool) Node {
 		}
 
 		s := &StructNode{
+			global: globalScope,
+			foreign: p.foreignScope,
+			ident: ident,
+			fields: fields,
+		}
+
+		if globalScope {
+			p.typeList = append(p.typeList, s)
+		}
+
+		return s
+	} else if p.Match(ENUM) {
+		p.Consume(LBRACE)
+		fields := make([]Token, 0)
+		for {
+			if p.Match(RBRACE) {
+				break
+			}
+
+			fields = append(fields, p.Next())
+			p.Consume(COMMA)
+		}
+		s := &EnumNode{
 			global: globalScope,
 			foreign: p.foreignScope,
 			ident: ident,

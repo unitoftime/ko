@@ -181,7 +181,6 @@ func pop() f64 {
 	return *vm.stackTop
 }
 
-
 type VirtualMachine struct {
 	chunk *Chunk
 	ip *u8
@@ -196,8 +195,53 @@ const InterpretRuntimeError = 2
 
 func interpret(source []char) int {
 	ko_printf("\nINTERPRET: %d\n", len[char](source))
-	// Lex, comple, run
+	compile(source)
+
+
 	return InterpretOk
+}
+
+func compile(source []char) {
+	initScanner(source)
+
+	line := -1
+	for ;;; {
+		token := scanToken()
+		if token.line != line {
+			ko_printf("%d ", token.line)
+			line = token.line
+		} else {
+			ko_printf("    | ")
+		}
+		ko_printf("%d %s\n", token.Type, token.str)
+
+		if token.Type == TOKEN_EOF {
+			break
+		}
+	}
+}
+
+type Scanner struct {
+	start *char
+	current *char
+	line int
+}
+
+var scanner Scanner
+func initScanner(source []char) {
+	scanner.start = &source[0]
+	scanner.current = scanner.start
+	scanner.line = 1
+}
+
+type Token struct {
+	Type TokenType
+	line int
+	str string
+}
+
+type TokenType enum {
+
 }
 
 // Old Interpret for hand assembled chunks

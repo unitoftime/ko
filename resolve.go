@@ -364,6 +364,9 @@ func (r *Resolver) registerGlobal(n Node) {
 	case *StructNode:
 		// t.ty = typeOf(t)
 		r.global.AddIdent(t.ident.str, t) // Register struct name
+	case *EnumNode:
+		// t.ty = typeOf(t)
+		r.global.AddIdent(t.ident.str, t) // Register struct name
 	case *ArgNode:
 	case *Stmt:
 	case *CompLitExpr:
@@ -432,6 +435,21 @@ func (r *Resolver) resolveLocal(node Node) Type {
 		if r.LocalScope() {
 			r.AddIdent(t.ident.str, t)
 		}
+		return t.ty
+	case *EnumNode:
+		if t.ty != UnknownType {
+			return t.ty
+		}
+
+		// TODO: If you combine enum with unions then resolve all fields
+		fields := make([]string, len(t.fields))
+		for i, field := range t.fields {
+			fields[i] = field.str
+
+			r.AddIdent(field.str, field)
+		}
+
+		t.ty = getType(&EnumType{t.ident.str, fields})
 		return t.ty
 	case *FuncNode:
 		Println("FuncNode:", t.name)

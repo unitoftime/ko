@@ -1,3 +1,7 @@
+# Interesting Thoughts
+- [ ] A token list is kind of like a byte code that we interpret to generate code and typecheck
+- [ ] comptime is kind of like a way to add and use variables in our code generation bytecode interpreter
+
 # TODO
 - [x] ++ --
 - [x] :=

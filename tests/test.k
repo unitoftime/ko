@@ -374,3 +374,19 @@ func TestCasting() {
 	y := u8(x)
 	ko_printf("y: %d", y)
 }
+
+type testEnum enum {
+	ENUM_A, ENUM_B, ENUM_C,
+}
+// typedef uint8_t testEnum;
+
+// enum testEnum_Tag {
+// 	testEnum_A = 0,
+// 	testEnum_B = 1,
+// 	testEnum_C = 2,
+// };
+
+
+func TestEnum() {
+	testEnum := ENUM_A
+}
