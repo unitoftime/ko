@@ -31,9 +31,12 @@ typedef enum {
   OP_JUMP_IF_FALSE,
   OP_JUMP,
   OP_LOOP,
+  OP_CALL,
 } OpCode;
 
 typedef enum {
+  OBJ_FUNCTION,
+  OBJ_NATIVE,
   OBJ_STRING,
 } ObjType;
 
@@ -130,7 +133,30 @@ typedef struct {
   int depth;
 } Local;
 
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT
+} FunctionType;
+
 typedef struct {
+  Obj obj;
+  int arity;
+  Chunk chunk;
+  ObjString* name;
+} ObjFunction;
+
+typedef Value (*NativeFn)(int argCount, Value* args);
+
+typedef struct {
+  Obj obj;
+  NativeFn function;
+} ObjNative;
+
+typedef struct Compiler {
+  struct Compiler* enclosing;
+  ObjFunction* function;
+  FunctionType type;
+
   Local locals[UINT8_COUNT];
   int localCount;
   int scopeDepth;
@@ -138,11 +164,20 @@ typedef struct {
 
 Compiler* current = NULL;
 
-#define STACK_MAX 256
+
 
 typedef struct {
-  Chunk* chunk;
+  ObjFunction* function;
   uint8_t* ip;
+  Value* slots;
+} CallFrame;
+
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
+
+typedef struct {
+  CallFrame frames[FRAMES_MAX];
+  int frameCount;
 
   Value stack[STACK_MAX];
   Value* stackTop;
@@ -166,15 +201,23 @@ bool valuesEqual(Value a, Value b);
 
 void initScanner(const char* source);
 Token scanToken();
-bool compile(const char* source, Chunk* chunk);
+ObjFunction* compile(const char* source);
 ObjString* copyString(const char* chars, int length);
 ObjString* takeString(char* chars, int length);
+ObjFunction* newFunction();
 void printObject(Value value);
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
+#define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
+#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
+
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
+#define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
+#define AS_NATIVE(value) \
+    (((ObjNative*)AS_OBJ(value))->function)
+
 
 void initVM();
 void freeVM();
@@ -191,6 +234,10 @@ bool tableDelete(Table* table, ObjString* key);
 void tableAddAll(Table* from, Table* to);
 ObjString* tableFindString(Table* table, const char* chars,
                            int length, uint32_t hash);
+void freeChunk(Chunk* chunk);
+
+ObjNative* newNative(NativeFn function);
+
 
 VM vm;
 
