@@ -1,6 +1,9 @@
 # Interesting Thoughts
 - [ ] A token list is kind of like a byte code that we interpret to generate code and typecheck
 - [ ] comptime is kind of like a way to add and use variables in our code generation bytecode interpreter
+- [ ] Closures:
+  - [ ] If they don't escape to the heap, then we can rely on the stack allocated variables (i'm pretty sure)
+  - [ ] If they escape to the heap, we could maybe escape and refcount every variable that the closure closes over. I think this would only leak memory if you ended up creating a cycle of closure variables, which is a weird edgecase to think about)
 
 # TODO
 - [x] ++ --

@@ -32,12 +32,18 @@ typedef enum {
   OP_JUMP,
   OP_LOOP,
   OP_CALL,
+  OP_CLOSURE,
+  OP_GET_UPVALUE,
+  OP_SET_UPVALUE,
+  OP_CLOSE_UPVALUE,
 } OpCode;
 
 typedef enum {
   OBJ_FUNCTION,
+  OBJ_CLOSURE,
   OBJ_NATIVE,
   OBJ_STRING,
+  OBJ_UPVALUE,
 } ObjType;
 
 typedef enum {
@@ -131,6 +137,7 @@ typedef struct {
 typedef struct {
   Token name;
   int depth;
+  bool isCaptured;
 } Local;
 
 typedef enum {
@@ -141,6 +148,7 @@ typedef enum {
 typedef struct {
   Obj obj;
   int arity;
+  int upvalueCount;
   Chunk chunk;
   ObjString* name;
 } ObjFunction;
@@ -152,6 +160,25 @@ typedef struct {
   NativeFn function;
 } ObjNative;
 
+typedef struct ObjUpvalue {
+  Obj obj;
+  Value* location;
+  Value closed;
+  struct ObjUpvalue* next;
+} ObjUpvalue;
+
+typedef struct {
+  Obj obj;
+  ObjFunction* function;
+  ObjUpvalue** upvalues;
+  int upvalueCount;
+} ObjClosure;
+
+typedef struct {
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
 typedef struct Compiler {
   struct Compiler* enclosing;
   ObjFunction* function;
@@ -159,15 +186,14 @@ typedef struct Compiler {
 
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 } Compiler;
 
 Compiler* current = NULL;
 
-
-
 typedef struct {
-  ObjFunction* function;
+  ObjClosure* closure;
   uint8_t* ip;
   Value* slots;
 } CallFrame;
@@ -182,10 +208,12 @@ typedef struct {
   Value stack[STACK_MAX];
   Value* stackTop;
 
+  ObjUpvalue* openUpvalues;
   Obj* objects;
   Table globals;
   Table strings;
 } VM;
+
 
 typedef enum {
   INTERPRET_OK,
@@ -203,6 +231,7 @@ void initScanner(const char* source);
 Token scanToken();
 ObjFunction* compile(const char* source);
 ObjString* copyString(const char* chars, int length);
+ObjUpvalue* newUpvalue(Value* slot);
 ObjString* takeString(char* chars, int length);
 ObjFunction* newFunction();
 void printObject(Value value);
@@ -211,7 +240,9 @@ void printObject(Value value);
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
+#define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 
+#define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
@@ -238,6 +269,7 @@ void freeChunk(Chunk* chunk);
 
 ObjNative* newNative(NativeFn function);
 
+ObjClosure* newClosure(ObjFunction* function);
 
 VM vm;
 
