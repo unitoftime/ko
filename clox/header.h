@@ -113,6 +113,7 @@ typedef struct {
 
 struct Obj {
   ObjType type;
+  bool isMarked;
   struct Obj* next;
 };
 
@@ -212,6 +213,15 @@ typedef struct {
   Obj* objects;
   Table globals;
   Table strings;
+
+  // GC Stuff
+  size_t bytesAllocated;
+  size_t nextGC;
+
+  int grayCount;
+  int grayCapacity;
+  Obj** grayStack;
+
 } VM;
 
 
@@ -235,6 +245,20 @@ ObjUpvalue* newUpvalue(Value* slot);
 ObjString* takeString(char* chars, int length);
 ObjFunction* newFunction();
 void printObject(Value value);
+
+#define IS_BOOL(value)    ((value).type == VAL_BOOL)
+#define IS_NIL(value)     ((value).type == VAL_NIL)
+#define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
+#define IS_OBJ(value)     ((value).type == VAL_OBJ)
+
+#define AS_OBJ(value)     ((value).as.obj)
+#define AS_BOOL(value)    ((value).as.boolean)
+#define AS_NUMBER(value)  ((value).as.number)
+
+#define BOOL_VAL(value)   ((Value){VAL_BOOL, {.boolean = value}})
+#define NIL_VAL           ((Value){VAL_NIL, {.number = 0}})
+#define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
+#define OBJ_VAL(object)   ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
@@ -270,6 +294,14 @@ void freeChunk(Chunk* chunk);
 ObjNative* newNative(NativeFn function);
 
 ObjClosure* newClosure(ObjFunction* function);
+
+void collectGarbage();
+void markValue(Value value);
+void markObject(Obj* object);
+void markTable(Table* table);
+void markCompilerRoots();
+void tableRemoveWhite(Table* table);
+
 
 VM vm;
 

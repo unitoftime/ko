@@ -4,6 +4,7 @@
 - [ ] Closures:
   - [ ] If they don't escape to the heap, then we can rely on the stack allocated variables (i'm pretty sure)
   - [ ] If they escape to the heap, we could maybe escape and refcount every variable that the closure closes over. I think this would only leak memory if you ended up creating a cycle of closure variables, which is a weird edgecase to think about)
+- [ ] Defaults are super nice for defining lots of configuration structs. Like "I want this baseline config, but I want to modify just these fields"
 
 # TODO
 - [x] ++ --
