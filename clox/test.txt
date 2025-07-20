@@ -1,3 +1,15 @@
+class Doughnut {
+  cook() {
+    print "Dunk in the fryer.";
+  }
+}
+
+class Cruller < Doughnut {
+  finish() {
+    print "Glaze with icing.";
+  }
+}
+
 class Scone {
   topping(first, second) {
     print "scone with " + first + " and " + second;
