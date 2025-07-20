@@ -1,12 +1,6 @@
 #ifndef clox_scanner_h
 #define clox_scanner_h
 
-/* #include <stdio.h> */
-/* #include <string.h> */
-
-/* #include "common.h" */
-/* #include "scanner.h" */
-
 Scanner scanner;
 
 void initScanner(const char* source) {
@@ -212,10 +206,8 @@ Token scanToken() {
 
   }
 
-
   return errorToken("Unexpected character.");
 }
-
 
 
 #endif

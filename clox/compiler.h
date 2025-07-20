@@ -1,14 +1,6 @@
 #ifndef clox_compiler_h
 #define clox_compiler_h
 
-/* #include <stdio.h> */
-/* #include <stdlib.h> */
-
-/* #include "common.h" */
-/* #include "compiler.h" */
-/* #include "scanner.h" */
-/* #include "object.h" */
-
 typedef struct {
   Token current;
   Token previous;
@@ -147,6 +139,11 @@ static uint8_t makeConstant(Value value) {
   return (uint8_t)constant;
 }
 
+static uint8_t identifierConstant(Token* name) {
+  return makeConstant(OBJ_VAL(copyString(name->start,
+                                         name->length)));
+}
+
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
 }
@@ -263,6 +260,18 @@ static void compile_call(bool canAssign) {
   emitBytes(OP_CALL, argCount);
 }
 
+static void dot(bool canAssign) {
+  consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+  uint8_t name = identifierConstant(&parser.previous);
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    expression();
+    emitBytes(OP_SET_PROPERTY, name);
+  } else {
+    emitBytes(OP_GET_PROPERTY, name);
+  }
+}
+
 static void literal(bool canAssign) {
   switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE); break;
@@ -307,10 +316,7 @@ static void string(bool canAssign) {
                                   parser.previous.length - 2)));
 }
 
-static uint8_t identifierConstant(Token* name) {
-  return makeConstant(OBJ_VAL(copyString(name->start,
-                                         name->length)));
-}
+
 
 static bool identifiersEqual(Token* a, Token* b) {
   if (a->length != b->length) return false;
@@ -447,7 +453,7 @@ ParseRule rules[] = {
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_DOT]           = {NULL,     dot,    PREC_CALL},
   [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
   [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
   [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
@@ -578,7 +584,17 @@ static void function(FunctionType type) {
   }
 }
 
+static void classDeclaration() {
+  consume(TOKEN_IDENTIFIER, "Expect class name.");
+  uint8_t nameConstant = identifierConstant(&parser.previous);
+  declareVariable();
 
+  emitBytes(OP_CLASS, nameConstant);
+  defineVariable(nameConstant);
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+}
 
 static void funDeclaration() {
   uint8_t global = parseVariable("Expect function name.");
@@ -755,7 +771,9 @@ static void statement() {
 }
 
 static void declaration() {
-  if (match(TOKEN_FUN)) {
+  if (match(TOKEN_CLASS)) {
+    classDeclaration();
+  } else if (match(TOKEN_FUN)) {
     funDeclaration();
   } else if (match(TOKEN_VAR)) {
     varDeclaration();

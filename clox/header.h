@@ -36,6 +36,9 @@ typedef enum {
   OP_GET_UPVALUE,
   OP_SET_UPVALUE,
   OP_CLOSE_UPVALUE,
+  OP_CLASS,
+  OP_GET_PROPERTY,
+  OP_SET_PROPERTY,
 } OpCode;
 
 typedef enum {
@@ -44,6 +47,8 @@ typedef enum {
   OBJ_NATIVE,
   OBJ_STRING,
   OBJ_UPVALUE,
+  OBJ_CLASS,
+  OBJ_INSTANCE,
 } ObjType;
 
 typedef enum {
@@ -176,6 +181,17 @@ typedef struct {
 } ObjClosure;
 
 typedef struct {
+  Obj obj;
+  ObjString* name;
+} ObjClass;
+
+typedef struct {
+  Obj obj;
+  ObjClass* klass;
+  Table fields;
+} ObjInstance;
+
+typedef struct {
   uint8_t index;
   bool isLocal;
 } Upvalue;
@@ -250,10 +266,16 @@ void printObject(Value value);
 #define IS_NIL(value)     ((value).type == VAL_NIL)
 #define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
 #define IS_OBJ(value)     ((value).type == VAL_OBJ)
+#define IS_CLASS(value)        isObjType(value, OBJ_CLASS)
+#define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
+
 
 #define AS_OBJ(value)     ((value).as.obj)
 #define AS_BOOL(value)    ((value).as.boolean)
 #define AS_NUMBER(value)  ((value).as.number)
+#define AS_CLASS(value)        ((ObjClass*)AS_OBJ(value))
+#define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
+
 
 #define BOOL_VAL(value)   ((Value){VAL_BOOL, {.boolean = value}})
 #define NIL_VAL           ((Value){VAL_NIL, {.number = 0}})
@@ -301,6 +323,9 @@ void markObject(Obj* object);
 void markTable(Table* table);
 void markCompilerRoots();
 void tableRemoveWhite(Table* table);
+
+ObjClass* newClass(ObjString* name);
+ObjInstance* newInstance(ObjClass* klass);
 
 
 VM vm;
