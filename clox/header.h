@@ -39,6 +39,8 @@ typedef enum {
   OP_CLASS,
   OP_GET_PROPERTY,
   OP_SET_PROPERTY,
+  OP_METHOD,
+  OP_INVOKE,
 } OpCode;
 
 typedef enum {
@@ -49,6 +51,7 @@ typedef enum {
   OBJ_UPVALUE,
   OBJ_CLASS,
   OBJ_INSTANCE,
+  OBJ_BOUND_METHOD,
 } ObjType;
 
 typedef enum {
@@ -148,7 +151,9 @@ typedef struct {
 
 typedef enum {
   TYPE_FUNCTION,
-  TYPE_SCRIPT
+  TYPE_SCRIPT,
+  TYPE_METHOD,
+  TYPE_INITIALIZER,
 } FunctionType;
 
 typedef struct {
@@ -183,6 +188,7 @@ typedef struct {
 typedef struct {
   Obj obj;
   ObjString* name;
+  Table methods;
 } ObjClass;
 
 typedef struct {
@@ -190,6 +196,12 @@ typedef struct {
   ObjClass* klass;
   Table fields;
 } ObjInstance;
+
+typedef struct {
+  Obj obj;
+  Value receiver;
+  ObjClosure* method;
+} ObjBoundMethod;
 
 typedef struct {
   uint8_t index;
@@ -207,7 +219,13 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
+typedef struct ClassCompiler {
+  struct ClassCompiler* enclosing;
+} ClassCompiler;
+
 Compiler* current = NULL;
+ClassCompiler* currentClass = NULL;
+
 
 typedef struct {
   ObjClosure* closure;
@@ -229,6 +247,7 @@ typedef struct {
   Obj* objects;
   Table globals;
   Table strings;
+  ObjString* initString;
 
   // GC Stuff
   size_t bytesAllocated;
@@ -268,6 +287,7 @@ void printObject(Value value);
 #define IS_OBJ(value)     ((value).type == VAL_OBJ)
 #define IS_CLASS(value)        isObjType(value, OBJ_CLASS)
 #define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
+#define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
 
 
 #define AS_OBJ(value)     ((value).as.obj)
@@ -275,6 +295,7 @@ void printObject(Value value);
 #define AS_NUMBER(value)  ((value).as.number)
 #define AS_CLASS(value)        ((ObjClass*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
+#define AS_BOUND_METHOD(value) ((ObjBoundMethod*)AS_OBJ(value))
 
 
 #define BOOL_VAL(value)   ((Value){VAL_BOOL, {.boolean = value}})
@@ -326,7 +347,8 @@ void tableRemoveWhite(Table* table);
 
 ObjClass* newClass(ObjString* name);
 ObjInstance* newInstance(ObjClass* klass);
-
+ObjBoundMethod* newBoundMethod(Value receiver,
+                               ObjClosure* method);
 
 VM vm;
 
